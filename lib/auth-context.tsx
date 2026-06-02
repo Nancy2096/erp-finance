@@ -147,8 +147,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // Salt rounds para bcrypt
 const SALT_ROUNDS = 10
-const STORAGE_KEY_USERS = "1d10-secure-users"
+const STORAGE_KEY_USERS = "1d10-secure-users-v3"
 const STORAGE_KEY_SESSION = "1d10-current-session"
+
+// Contraseñas específicas por email
+const userPasswords: Record<string, string> = {
+  "enrique@agency4realestate.com": "Gp3dv67w.",
+  "keila@agency4realestate.com": "Keila123!",
+  "antonio@agency4realestate.com": "Tony123!",
+  "administracion.finanzas@agency4realestate.com": "Admin123!",
+}
 
 // Inicializar usuarios con contraseñas hasheadas
 const initializeUsers = async (): Promise<StoredUser[]> => {
@@ -164,21 +172,14 @@ const initializeUsers = async (): Promise<StoredUser[]> => {
     }
   }
   
-  // Crear usuarios iniciales con contraseñas hasheadas
-  // Contraseña por defecto: Admin123! para admin, User123! para el resto
-  const defaultPasswords: Record<string, string> = {
-    "admin": "Admin123!",
-    "manager": "Manager123!",
-    "analyst": "Analyst123!",
-    "viewer": "Viewer123!"
-  }
-  
+  // Crear usuarios con contraseñas específicas por email
   const users: StoredUser[] = await Promise.all(
     mockUsers
       .filter(u => u.status === "active")
       .map(async (u) => {
         const role = (u.role as UserRole) || "viewer"
-        const password = defaultPasswords[role] || "User123!"
+        // Usar contraseña específica por email o default
+        const password = userPasswords[u.email.toLowerCase()] || "User123!"
         const hash = await bcrypt.hash(password, SALT_ROUNDS)
         return {
           id: u.id,

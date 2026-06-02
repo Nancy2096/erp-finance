@@ -192,10 +192,9 @@ export default function LoginPage() {
             
             {/* Info de credenciales para demo */}
             <div className="mt-6 p-3 rounded-lg bg-slate-700/30 border border-slate-600">
-              <p className="text-xs text-slate-400 text-center mb-2">Credenciales de prueba:</p>
+              <p className="text-xs text-slate-400 text-center mb-2">Credenciales de acceso:</p>
               <div className="text-xs text-slate-500 space-y-1">
-                <p><span className="text-slate-400">Admin:</span> carlos@capital1d10.com / Admin123!</p>
-                <p><span className="text-slate-400">Gerente:</span> ana@capital1d10.com / Manager123!</p>
+                <p><span className="text-slate-400">Admin:</span> enrique@agency4realestate.com</p>
               </div>
             </div>
           </CardContent>
