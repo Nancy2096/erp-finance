@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { mockUsers } from "./mock-data"
+import bcrypt from "bcryptjs"
 
 // Definicion de roles y sus permisos
 export type UserRole = "admin" | "manager" | "analyst" | "viewer"
@@ -118,131 +119,122 @@ export interface CurrentUser {
   email: string
   role: UserRole
   avatar?: string
-  password?: string
+}
+
+interface StoredUser {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  avatar?: string
+  passwordHash: string
 }
 
 interface AuthContextType {
   currentUser: CurrentUser | null
   isAuthenticated: boolean
   permissions: RolePermissions | null
-  login: (user: CurrentUser) => void
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
-  switchUser: (userId: string) => void
   updateCurrentUser: (updates: Partial<CurrentUser>) => void
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
   canAccess: (module: keyof RolePermissions, action?: keyof Permission) => boolean
   canAccessRoute: (route: string) => boolean
-  availableUsers: CurrentUser[]
+  isLoaded: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Convertir mockUsers a formato de autenticacion
-const getDefaultUsers = (): CurrentUser[] => {
-  return mockUsers
-    .filter(u => u.status === "active")
-    .map(u => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: (u.role as UserRole) || "viewer",
-      avatar: u.avatar,
-      password: "password123"
-    }))
+// Salt rounds para bcrypt
+const SALT_ROUNDS = 10
+const STORAGE_KEY_USERS = "1d10-secure-users"
+const STORAGE_KEY_SESSION = "1d10-current-session"
+
+// Inicializar usuarios con contraseñas hasheadas
+const initializeUsers = async (): Promise<StoredUser[]> => {
+  const saved = localStorage.getItem(STORAGE_KEY_USERS)
+  if (saved) {
+    try {
+      const users = JSON.parse(saved)
+      if (Array.isArray(users) && users.length > 0) {
+        return users
+      }
+    } catch {
+      // Error parsing, reinicializar
+    }
+  }
+  
+  // Crear usuarios iniciales con contraseñas hasheadas
+  // Contraseña por defecto: Admin123! para admin, User123! para el resto
+  const defaultPasswords: Record<string, string> = {
+    "admin": "Admin123!",
+    "manager": "Manager123!",
+    "analyst": "Analyst123!",
+    "viewer": "Viewer123!"
+  }
+  
+  const users: StoredUser[] = await Promise.all(
+    mockUsers
+      .filter(u => u.status === "active")
+      .map(async (u) => {
+        const role = (u.role as UserRole) || "viewer"
+        const password = defaultPasswords[role] || "User123!"
+        const hash = await bcrypt.hash(password, SALT_ROUNDS)
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: role,
+          avatar: u.avatar,
+          passwordHash: hash
+        }
+      })
+  )
+  
+  localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users))
+  return users
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
-  // Inicializar con usuarios por defecto inmediatamente
-  const [availableUsers, setAvailableUsers] = useState<CurrentUser[]>(() => getDefaultUsers())
+  const [storedUsers, setStoredUsers] = useState<StoredUser[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
-  // Cargar usuarios de localStorage o usar defaults
-  const loadUsersFromStorage = () => {
-    const saved = localStorage.getItem("1d10-users")
-    if (saved) {
-      try {
-        const parsedUsers = JSON.parse(saved)
-        if (Array.isArray(parsedUsers) && parsedUsers.length > 0) {
-          const authUsers: CurrentUser[] = parsedUsers
-            .filter((u: { status?: string }) => u.status === "active")
-            .map((u: { id: string; name: string; email: string; role: string; avatar?: string }) => ({
-              id: u.id,
-              name: u.name,
-              email: u.email,
-              role: (u.role as UserRole) || "viewer",
-              avatar: u.avatar,
-              password: "password123"
-            }))
-          if (authUsers.length > 0) {
-            setAvailableUsers(authUsers)
-            return
-          }
-        }
-      } catch {
-        // Error parsing, usar defaults
-      }
-    }
-    // Solo si no hay datos en localStorage, usar defaults (primera vez)
-    const defaults = getDefaultUsers()
-    setAvailableUsers(defaults)
-    // Solo guardar si no existe nada en localStorage
-    if (!localStorage.getItem("1d10-users")) {
-      localStorage.setItem("1d10-users", JSON.stringify(mockUsers))
-    }
-  }
-
-  // Cargar usuario actual y lista de usuarios
+  // Cargar usuarios y sesión al iniciar
   useEffect(() => {
-    // Cargar usuarios disponibles
-    loadUsersFromStorage()
-    
-    // Cargar sesion actual
-    const saved = localStorage.getItem("1d10-current-user")
-    if (saved) {
-      try {
-        const user = JSON.parse(saved)
-        setCurrentUser(user)
-      } catch {
-        setCurrentUser(null)
+    const loadAuth = async () => {
+      // Inicializar usuarios
+      const users = await initializeUsers()
+      setStoredUsers(users)
+      
+      // Cargar sesión actual
+      const sessionToken = localStorage.getItem(STORAGE_KEY_SESSION)
+      if (sessionToken) {
+        try {
+          const session = JSON.parse(sessionToken)
+          // Verificar que el usuario todavía existe
+          const user = users.find(u => u.id === session.userId)
+          if (user && session.expiresAt > Date.now()) {
+            setCurrentUser({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              avatar: user.avatar
+            })
+          } else {
+            localStorage.removeItem(STORAGE_KEY_SESSION)
+          }
+        } catch {
+          localStorage.removeItem(STORAGE_KEY_SESSION)
+        }
       }
-    } else {
-      setCurrentUser(null)
-    }
-    setIsLoaded(true)
-    
-    // Escuchar cambios en localStorage de usuarios (desde otras pestanas)
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "1d10-users") {
-        loadUsersFromStorage()
-      }
+      setIsLoaded(true)
     }
     
-    // Escuchar evento personalizado de actualizacion de usuarios (misma pestana)
-    const handleUsersUpdated = (e: CustomEvent) => {
-      const updatedUsers = e.detail
-      if (Array.isArray(updatedUsers) && updatedUsers.length > 0) {
-        const authUsers: CurrentUser[] = updatedUsers
-          .filter((u: { status?: string }) => u.status === "active")
-          .map((u: { id: string; name: string; email: string; role: string; avatar?: string }) => ({
-            id: u.id,
-            name: u.name,
-            email: u.email,
-            role: (u.role as UserRole) || "viewer",
-            avatar: u.avatar,
-            password: "password123"
-          }))
-        setAvailableUsers(authUsers)
-      }
-    }
-    
-    window.addEventListener("storage", handleStorage)
-    window.addEventListener("users-updated", handleUsersUpdated as EventListener)
-    return () => {
-      window.removeEventListener("storage", handleStorage)
-      window.removeEventListener("users-updated", handleUsersUpdated as EventListener)
-    }
+    loadAuth()
   }, [])
 
   // Redirigir a login si no hay usuario autenticado (excepto en /login)
@@ -252,30 +244,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isLoaded, currentUser, pathname, router])
 
-  // Guardar usuario en localStorage
-  useEffect(() => {
-    if (isLoaded && currentUser) {
-      localStorage.setItem("1d10-current-user", JSON.stringify(currentUser))
-    }
-  }, [currentUser, isLoaded])
-
   const permissions = currentUser ? rolePermissions[currentUser.role] : null
 
-  const login = (user: CurrentUser) => {
-    setCurrentUser(user)
+  // Login con verificación de contraseña hasheada
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const user = storedUsers.find(u => u.email.toLowerCase() === email.toLowerCase())
+    
+    if (!user) {
+      return { success: false, error: "El correo electrónico no está registrado en el sistema." }
+    }
+    
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash)
+    
+    if (!isValidPassword) {
+      return { success: false, error: "La contraseña es incorrecta." }
+    }
+    
+    // Crear sesión con expiración de 24 horas
+    const session = {
+      userId: user.id,
+      expiresAt: Date.now() + (24 * 60 * 60 * 1000)
+    }
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session))
+    
+    setCurrentUser({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar
+    })
+    
+    return { success: true }
   }
 
   const logout = () => {
     setCurrentUser(null)
-    localStorage.removeItem("1d10-current-user")
+    localStorage.removeItem(STORAGE_KEY_SESSION)
     router.push("/login")
-  }
-
-  const switchUser = (userId: string) => {
-    const user = availableUsers.find(u => u.id === userId)
-    if (user) {
-      setCurrentUser(user)
-    }
   }
 
   const updateCurrentUser = (updates: Partial<CurrentUser>) => {
@@ -284,26 +290,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const updatedUser = { ...currentUser, ...updates }
     setCurrentUser(updatedUser)
     
-    // Actualizar en la lista de usuarios disponibles
-    setAvailableUsers(prev => 
-      prev.map(u => u.id === currentUser.id ? updatedUser : u)
+    // Actualizar en la lista de usuarios almacenados
+    const updatedStoredUsers = storedUsers.map(u => 
+      u.id === currentUser.id 
+        ? { ...u, name: updatedUser.name, email: updatedUser.email, avatar: updatedUser.avatar }
+        : u
     )
-    
-    // Actualizar en localStorage (1d10-users)
-    const savedUsers = localStorage.getItem("1d10-users")
-    if (savedUsers) {
-      try {
-        const parsedUsers = JSON.parse(savedUsers)
-        const updatedUsers = parsedUsers.map((u: { id: string }) => 
-          u.id === currentUser.id 
-            ? { ...u, name: updatedUser.name, email: updatedUser.email, avatar: updatedUser.avatar }
-            : u
-        )
-        localStorage.setItem("1d10-users", JSON.stringify(updatedUsers))
-      } catch {
-        // Error al actualizar
-      }
+    setStoredUsers(updatedStoredUsers)
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(updatedStoredUsers))
+  }
+  
+  // Cambiar contraseña
+  const updatePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: "No hay usuario autenticado." }
     }
+    
+    const user = storedUsers.find(u => u.id === currentUser.id)
+    if (!user) {
+      return { success: false, error: "Usuario no encontrado." }
+    }
+    
+    // Verificar contraseña actual
+    const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash)
+    if (!isValidPassword) {
+      return { success: false, error: "La contraseña actual es incorrecta." }
+    }
+    
+    // Validar nueva contraseña
+    if (newPassword.length < 8) {
+      return { success: false, error: "La nueva contraseña debe tener al menos 8 caracteres." }
+    }
+    
+    // Hashear nueva contraseña y actualizar
+    const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS)
+    const updatedStoredUsers = storedUsers.map(u => 
+      u.id === currentUser.id ? { ...u, passwordHash: newHash } : u
+    )
+    setStoredUsers(updatedStoredUsers)
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(updatedStoredUsers))
+    
+    return { success: true }
   }
 
   const canAccess = (module: keyof RolePermissions, action: keyof Permission = "view"): boolean => {
@@ -325,11 +352,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       permissions,
       login,
       logout,
-      switchUser,
       updateCurrentUser,
+      updatePassword,
       canAccess,
       canAccessRoute,
-      availableUsers,
+      isLoaded,
     }}>
       {children}
     </AuthContext.Provider>

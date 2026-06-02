@@ -8,18 +8,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, EyeOff, LogIn, Building2, User } from "lucide-react"
+import { Eye, EyeOff, LogIn, Building2, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCompany } from "@/lib/company-context"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, availableUsers, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, isLoaded } = useAuth()
   const { settings: companySettings, isLoaded: companyLoaded } = useCompany()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [selectedUserId, setSelectedUserId] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -42,49 +40,30 @@ export default function LoginPage() {
   const logo = companySettings.logo || "/logo.png"
   const companyName = companySettings.name || "Capital 1D10"
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    
+    if (!email || !password) {
+      setError("Por favor ingresa tu correo y contraseña.")
+      return
+    }
+    
     setIsLoading(true)
     
-    // Simular validacion
-    setTimeout(() => {
-      // Si selecciono un usuario del dropdown
-      if (selectedUserId) {
-        const user = availableUsers.find(u => u.id === selectedUserId)
-        if (user) {
-          login(user)
-          router.push("/")
-        } else {
-          setError("Usuario no encontrado.")
-        }
-        setIsLoading(false)
-        return
-      }
-      
-      // Si ingreso email y contrasena manualmente
-      const user = availableUsers.find(u => u.email.toLowerCase() === email.toLowerCase())
-      
-      if (!user) {
-        setError("El correo electronico no esta registrado en el sistema.")
-        setIsLoading(false)
-        return
-      }
-      
-      if (user.password !== password) {
-        setError("La contrasena es incorrecta.")
-        setIsLoading(false)
-        return
-      }
-      
-      login(user)
+    const result = await login(email, password)
+    
+    if (result.success) {
       router.push("/")
-      setIsLoading(false)
-    }, 1000)
+    } else {
+      setError(result.error || "Error al iniciar sesión.")
+    }
+    
+    setIsLoading(false)
   }
 
   // Mostrar loading mientras se monta o carga la configuracion
-  if (!mounted || !companyLoaded) {
+  if (!mounted || !companyLoaded || !isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="h-8 w-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
@@ -125,45 +104,6 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Selector de usuario (para demo) */}
-              <div className="space-y-2">
-                <Label className="text-slate-200">
-                  Seleccionar Usuario ({availableUsers.length} disponibles)
-                </Label>
-                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                  <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                    <SelectValue placeholder="Selecciona un usuario..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableUsers.length === 0 ? (
-                      <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                        Cargando usuarios...
-                      </div>
-                    ) : (
-                      availableUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            <span>{user.name}</span>
-                            <span className="text-muted-foreground text-xs">
-                              ({user.role === 'admin' ? 'Administrador' : 
-                                user.role === 'manager' ? 'Gerente' :
-                                user.role === 'analyst' ? 'Analista' : 'Visor'})
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="relative flex items-center">
-                <div className="flex-grow border-t border-slate-600"></div>
-                <span className="flex-shrink mx-3 text-slate-500 text-xs">o ingresa manualmente</span>
-                <div className="flex-grow border-t border-slate-600"></div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-slate-200">
                   Correo Electronico
@@ -175,12 +115,14 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
+                  autoComplete="email"
+                  required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-slate-200">
-                  Contrasena
+                  Contraseña
                 </Label>
                 <div className="relative">
                   <Input
@@ -190,6 +132,8 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 pr-10"
+                    autoComplete="current-password"
+                    required
                   />
                   <Button
                     type="button"
@@ -204,8 +148,9 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                  {error}
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
@@ -221,20 +166,20 @@ export default function LoginPage() {
                     Recordar sesion
                   </Label>
                 </div>
-                <Button type="button" variant="link" className="text-blue-400 p-0 h-auto">
-                  Olvide mi contrasena
+                <Button type="button" variant="link" className="text-blue-400 p-0 h-auto text-sm">
+                  Olvide mi contraseña
                 </Button>
               </div>
 
               <Button
                 type="submit"
                 className="w-full bg-blue-500 hover:bg-blue-600"
-                disabled={isLoading || (!selectedUserId && (!email || !password))}
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Ingresando...
+                    Verificando...
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
@@ -244,6 +189,15 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+            
+            {/* Info de credenciales para demo */}
+            <div className="mt-6 p-3 rounded-lg bg-slate-700/30 border border-slate-600">
+              <p className="text-xs text-slate-400 text-center mb-2">Credenciales de prueba:</p>
+              <div className="text-xs text-slate-500 space-y-1">
+                <p><span className="text-slate-400">Admin:</span> carlos@capital1d10.com / Admin123!</p>
+                <p><span className="text-slate-400">Gerente:</span> ana@capital1d10.com / Manager123!</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
