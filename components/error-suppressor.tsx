@@ -2,45 +2,56 @@
 
 import { useEffect } from 'react';
 
+// Suprimir inmediatamente antes de que React se monte
+if (typeof window !== 'undefined') {
+  const originalError = window.onerror;
+  window.onerror = (message, ...args) => {
+    if (message && typeof message === 'string' && message.includes('ResizeObserver')) {
+      return true;
+    }
+    return originalError ? originalError(message, ...args) : false;
+  };
+}
+
 export function ErrorSuppressor() {
   useEffect(() => {
     // Suprimir el error de ResizeObserver que es inofensivo
     const resizeObserverErrorHandler = (e: ErrorEvent) => {
-      if (e.message && e.message.includes('ResizeObserver loop')) {
+      if (e.message && e.message.includes('ResizeObserver')) {
         e.stopImmediatePropagation();
         e.preventDefault();
-        return true;
+        return;
       }
     };
 
-    // Capturar errores en window.error
-    window.addEventListener('error', resizeObserverErrorHandler);
+    // Capturar errores con capture phase para interceptar antes
+    window.addEventListener('error', resizeObserverErrorHandler, true);
     
     // Sobrescribir console.error para filtrar este mensaje específico
     const originalConsoleError = console.error;
     console.error = (...args) => {
-      if (args[0] && typeof args[0] === 'string' && args[0].includes('ResizeObserver loop')) {
+      const message = args[0];
+      if (
+        (typeof message === 'string' && message.includes('ResizeObserver')) ||
+        (message instanceof Error && message.message.includes('ResizeObserver'))
+      ) {
         return;
       }
       originalConsoleError.apply(console, args);
     };
 
-    // También capturar a nivel global con window.onerror
-    const originalOnError = window.onerror;
-    window.onerror = (message, source, lineno, colno, error) => {
-      if (message && typeof message === 'string' && message.includes('ResizeObserver loop')) {
-        return true;
+    // Capturar unhandledrejection también
+    const unhandledRejectionHandler = (e: PromiseRejectionEvent) => {
+      if (e.reason && e.reason.message && e.reason.message.includes('ResizeObserver')) {
+        e.preventDefault();
       }
-      if (originalOnError) {
-        return originalOnError(message, source, lineno, colno, error);
-      }
-      return false;
     };
+    window.addEventListener('unhandledrejection', unhandledRejectionHandler);
 
     return () => {
-      window.removeEventListener('error', resizeObserverErrorHandler);
+      window.removeEventListener('error', resizeObserverErrorHandler, true);
+      window.removeEventListener('unhandledrejection', unhandledRejectionHandler);
       console.error = originalConsoleError;
-      window.onerror = originalOnError;
     };
   }, []);
 
