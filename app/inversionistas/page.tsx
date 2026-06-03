@@ -44,6 +44,7 @@ import {
   FileText,
   Mail,
   Phone,
+  Trash2,
 } from 'lucide-react';
 import { inversionistas, activos } from '@/lib/mock-data';
 import {
@@ -57,9 +58,10 @@ import { cn } from '@/lib/utils';
 export default function InversionistasPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [estatusFilter, setEstatusFilter] = useState<string>('all');
+  const [localInversionistas, setLocalInversionistas] = useState(inversionistas);
 
   const filteredInversionistas = useMemo(() => {
-    return inversionistas.filter((inv) => {
+    return localInversionistas.filter((inv) => {
       const matchesSearch =
         inv.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         inv.correo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -67,15 +69,21 @@ export default function InversionistasPage() {
       const matchesEstatus = estatusFilter === 'all' || inv.estatus === estatusFilter;
       return matchesSearch && matchesEstatus;
     });
-  }, [searchTerm, estatusFilter]);
+  }, [searchTerm, estatusFilter, localInversionistas]);
 
   const stats = useMemo(() => {
-    const totalInversionistas = inversionistas.length;
-    const totalInvertido = inversionistas.reduce((sum, i) => sum + i.montoInvertido, 0);
-    const totalDividendosRecibidos = inversionistas.reduce((sum, i) => sum + i.dividendosRecibidos, 0);
-    const totalDividendosPendientes = inversionistas.reduce((sum, i) => sum + i.dividendosPendientes, 0);
+    const totalInversionistas = localInversionistas.length;
+    const totalInvertido = localInversionistas.reduce((sum, i) => sum + i.montoInvertido, 0);
+    const totalDividendosRecibidos = localInversionistas.reduce((sum, i) => sum + i.dividendosRecibidos, 0);
+    const totalDividendosPendientes = localInversionistas.reduce((sum, i) => sum + i.dividendosPendientes, 0);
     return { totalInversionistas, totalInvertido, totalDividendosRecibidos, totalDividendosPendientes };
-  }, []);
+  }, [localInversionistas]);
+
+  const handleEliminar = (inv: typeof inversionistas[0]) => {
+    if (confirm(`¿Estás seguro de eliminar al inversionista "${inv.nombre}"? Esta acción no se puede deshacer.`)) {
+      setLocalInversionistas(localInversionistas.filter((i) => i.id !== inv.id));
+    }
+  };
 
   const getInitials = (name: string) => {
     return name
@@ -295,6 +303,14 @@ export default function InversionistasPage() {
                       <DropdownMenuItem>
                         <Phone className="mr-2 h-4 w-4" />
                         Contactar
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleEliminar(inv)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Eliminar
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
