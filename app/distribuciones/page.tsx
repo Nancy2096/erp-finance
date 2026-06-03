@@ -48,6 +48,7 @@ import {
   ArrowUpRight,
   Banknote,
   Send,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { distribuciones as distribucionesData, inversionistas, activos } from '@/lib/mock-data';
@@ -150,14 +151,15 @@ export default function DistribucionesPage() {
     }
 
     const inv = inversionistas.find((i) => i.id === newInversionistaId);
-    const act = activos.find((a) => a.id === newActivoId);
+    const activoIdFinal = newActivoId === 'none' ? undefined : newActivoId;
+    const act = activoIdFinal ? activos.find((a) => a.id === activoIdFinal) : undefined;
 
     const nuevaDistribucion: Distribucion = {
       id: `dist-${Date.now()}`,
       inversionistaId: newInversionistaId,
       inversionistaNombre: inv?.nombre || '',
-      activoId: newActivoId || undefined,
-      activoNombre: act?.nombre || undefined,
+      activoId: activoIdFinal,
+      activoNombre: act?.nombre,
       periodo: newPeriodo,
       fechaProgramada: newFechaProgramada,
       montoCalculado: parseFloat(newMontoCalculado) || 0,
@@ -221,6 +223,12 @@ export default function DistribucionesPage() {
           : d
       )
     );
+  };
+
+  const handleEliminar = (dist: Distribucion) => {
+    if (confirm(`¿Estás seguro de eliminar la distribución de ${dist.inversionistaNombre} - ${dist.periodo}?`)) {
+      setLocalDistribuciones(localDistribuciones.filter((d) => d.id !== dist.id));
+    }
   };
 
   const limpiarFiltros = () => {
@@ -489,8 +497,18 @@ export default function DistribucionesPage() {
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => handleEditClick(dist)}
+                              title="Editar"
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleEliminar(dist)}
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -535,7 +553,7 @@ export default function DistribucionesPage() {
                     <SelectValue placeholder="Seleccionar activo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin activo específico</SelectItem>
+                    <SelectItem value="none">Sin activo específico</SelectItem>
                     {activos
                       .filter((a) => a.estado === 'generando_rentas')
                       .map((act) => (

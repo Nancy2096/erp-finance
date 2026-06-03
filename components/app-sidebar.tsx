@@ -97,17 +97,19 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const { settings } = useCompany();
-  const { currentUser, canAccessRoute, switchUser, availableUsers, logout, updateCurrentUser } = useAuth();
+  const { currentUser, canAccessRoute, logout, updateCurrentUser, updatePassword } = useAuth();
 
   // Estados para el dialog de editar perfil
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [profilePassword, setProfilePassword] = useState('');
+  const [profileNewPassword, setProfileNewPassword] = useState('');
   const [profileConfirmPassword, setProfileConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Abrir dialog de perfil
@@ -117,8 +119,10 @@ export function AppSidebar() {
       setProfileEmail(currentUser.email);
       setProfileAvatar(currentUser.avatar);
       setProfilePassword('');
+      setProfileNewPassword('');
       setProfileConfirmPassword('');
       setShowPassword(false);
+      setPasswordError('');
       setIsProfileOpen(true);
     }
   };
@@ -136,25 +140,47 @@ export function AppSidebar() {
   };
 
   // Guardar cambios de perfil
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!profileName || !profileEmail) return;
-    if (profilePassword && profilePassword !== profileConfirmPassword) return;
-    if (profilePassword && profilePassword.length < 6) return;
+    setPasswordError('');
 
     setIsSaving(true);
-    setTimeout(() => {
-      const updates: Partial<typeof currentUser> = {
-        name: profileName,
-        email: profileEmail,
-        avatar: profileAvatar,
-      };
-      if (profilePassword) {
-        updates.password = profilePassword;
+    
+    // Si se quiere cambiar contraseña
+    if (profileNewPassword) {
+      if (!profilePassword) {
+        setPasswordError('Ingresa tu contraseña actual');
+        setIsSaving(false);
+        return;
       }
-      updateCurrentUser(updates);
-      setIsSaving(false);
-      setIsProfileOpen(false);
-    }, 500);
+      if (profileNewPassword !== profileConfirmPassword) {
+        setPasswordError('Las contraseñas no coinciden');
+        setIsSaving(false);
+        return;
+      }
+      if (profileNewPassword.length < 8) {
+        setPasswordError('La nueva contraseña debe tener al menos 8 caracteres');
+        setIsSaving(false);
+        return;
+      }
+      
+      const result = await updatePassword(profilePassword, profileNewPassword);
+      if (!result.success) {
+        setPasswordError(result.error || 'Error al cambiar contraseña');
+        setIsSaving(false);
+        return;
+      }
+    }
+    
+    // Actualizar datos del perfil
+    updateCurrentUser({
+      name: profileName,
+      email: profileEmail,
+      avatar: profileAvatar,
+    });
+    
+    setIsSaving(false);
+    setIsProfileOpen(false);
   };
 
   // Filtrar items de navegacion segun permisos
@@ -255,31 +281,6 @@ export function AppSidebar() {
               Mi Perfil
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-              Cambiar Usuario
-            </div>
-            {availableUsers.map((user) => (
-              <DropdownMenuItem 
-                key={user.id}
-                onClick={() => switchUser(user.id)}
-                className={currentUser?.id === user.id ? 'bg-accent' : ''}
-              >
-                <Avatar className="h-6 w-6 mr-2">
-                  <AvatarFallback className="text-[10px]">
-                    {user.name.split(' ').map(n => n[0]).join('')}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="text-sm">{user.name}</span>
-                  <span className="text-xs text-muted-foreground capitalize">
-                    {user.role === 'admin' ? 'Administrador' : 
-                     user.role === 'manager' ? 'Gerente' :
-                     user.role === 'analyst' ? 'Analista' : 'Visor'}
-                  </span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
               {theme === 'dark' ? (
                 <>
@@ -371,16 +372,24 @@ export function AppSidebar() {
             <div className="pt-2 border-t">
               <Label className="flex items-center gap-2 mb-3">
                 <Key className="h-4 w-4" />
-                Cambiar Contrasena
+                Cambiar Contraseña
                 <span className="text-xs text-muted-foreground font-normal">(opcional)</span>
               </Label>
               <div className="space-y-3">
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Nueva contrasena"
+                    placeholder="Contraseña actual"
                     value={profilePassword}
                     onChange={(e) => setProfilePassword(e.target.value)}
+                  />
+                </div>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Nueva contraseña (min. 8 caracteres)"
+                    value={profileNewPassword}
+                    onChange={(e) => setProfileNewPassword(e.target.value)}
                   />
                   <Button
                     type="button"
@@ -394,15 +403,18 @@ export function AppSidebar() {
                 </div>
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Confirmar contrasena"
+                  placeholder="Confirmar nueva contraseña"
                   value={profileConfirmPassword}
                   onChange={(e) => setProfileConfirmPassword(e.target.value)}
                 />
-                {profilePassword && profileConfirmPassword && profilePassword !== profileConfirmPassword && (
-                  <p className="text-sm text-destructive">Las contrasenas no coinciden</p>
+                {passwordError && (
+                  <p className="text-sm text-destructive">{passwordError}</p>
                 )}
-                {profilePassword && profilePassword.length < 6 && (
-                  <p className="text-sm text-amber-600">La contrasena debe tener al menos 6 caracteres</p>
+                {profileNewPassword && profileConfirmPassword && profileNewPassword !== profileConfirmPassword && !passwordError && (
+                  <p className="text-sm text-destructive">Las contraseñas no coinciden</p>
+                )}
+                {profileNewPassword && profileNewPassword.length < 8 && profileNewPassword.length > 0 && (
+                  <p className="text-sm text-amber-600">La contraseña debe tener al menos 8 caracteres</p>
                 )}
               </div>
             </div>
@@ -417,7 +429,7 @@ export function AppSidebar() {
                 isSaving || 
                 !profileName || 
                 !profileEmail ||
-                (profilePassword !== '' && (profilePassword !== profileConfirmPassword || profilePassword.length < 6))
+                (profileNewPassword !== '' && (profileNewPassword !== profileConfirmPassword || profileNewPassword.length < 8))
               }
             >
               {isSaving ? 'Guardando...' : 'Guardar Cambios'}
