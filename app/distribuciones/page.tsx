@@ -48,6 +48,7 @@ import {
   ArrowUpRight,
   Banknote,
   Send,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { distribuciones as distribucionesData, inversionistas, activos } from '@/lib/mock-data';
@@ -222,6 +223,12 @@ export default function DistribucionesPage() {
           : d
       )
     );
+  };
+
+  const handleEliminar = (dist: Distribucion) => {
+    if (confirm(`¿Estás seguro de eliminar la distribución de ${dist.inversionistaNombre} - ${dist.periodo}?`)) {
+      setLocalDistribuciones(localDistribuciones.filter((d) => d.id !== dist.id));
+    }
   };
 
   const limpiarFiltros = () => {
@@ -490,8 +497,18 @@ export default function DistribucionesPage() {
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => handleEditClick(dist)}
+                              title="Editar"
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleEliminar(dist)}
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
