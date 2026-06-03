@@ -150,14 +150,15 @@ export default function DistribucionesPage() {
     }
 
     const inv = inversionistas.find((i) => i.id === newInversionistaId);
-    const act = activos.find((a) => a.id === newActivoId);
+    const activoIdFinal = newActivoId === 'none' ? undefined : newActivoId;
+    const act = activoIdFinal ? activos.find((a) => a.id === activoIdFinal) : undefined;
 
     const nuevaDistribucion: Distribucion = {
       id: `dist-${Date.now()}`,
       inversionistaId: newInversionistaId,
       inversionistaNombre: inv?.nombre || '',
-      activoId: newActivoId || undefined,
-      activoNombre: act?.nombre || undefined,
+      activoId: activoIdFinal,
+      activoNombre: act?.nombre,
       periodo: newPeriodo,
       fechaProgramada: newFechaProgramada,
       montoCalculado: parseFloat(newMontoCalculado) || 0,
@@ -535,7 +536,7 @@ export default function DistribucionesPage() {
                     <SelectValue placeholder="Seleccionar activo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin activo específico</SelectItem>
+                    <SelectItem value="none">Sin activo específico</SelectItem>
                     {activos
                       .filter((a) => a.estado === 'generando_rentas')
                       .map((act) => (
