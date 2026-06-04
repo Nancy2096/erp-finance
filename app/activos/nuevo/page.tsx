@@ -17,11 +17,45 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Save, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Upload, Link2, ExternalLink } from 'lucide-react';
 
 export default function NuevoActivoPage() {
   const router = useRouter();
   const [contactos, setContactos] = useState([{ id: '1', nombre: '', cargo: '', telefono: '', correo: '', tipoContacto: 'vendedor' }]);
+  
+  // Estado para documentos
+  const [documentos, setDocumentos] = useState<Record<string, { tipo: 'archivo' | 'link' | null; archivo?: File; link?: string }>>({});
+
+  const handleDocumentoTipoChange = (label: string, tipo: 'archivo' | 'link') => {
+    setDocumentos(prev => ({
+      ...prev,
+      [label]: { ...prev[label], tipo }
+    }));
+  };
+
+  const handleLinkChange = (label: string, link: string) => {
+    setDocumentos(prev => ({
+      ...prev,
+      [label]: { ...prev[label], tipo: 'link', link }
+    }));
+  };
+
+  const handleFileChange = (label: string, file: File | null) => {
+    if (file) {
+      setDocumentos(prev => ({
+        ...prev,
+        [label]: { ...prev[label], tipo: 'archivo', archivo: file }
+      }));
+    }
+  };
+
+  const removeDocumento = (label: string) => {
+    setDocumentos(prev => {
+      const newDocs = { ...prev };
+      delete newDocs[label];
+      return newDocs;
+    });
+  };
 
   const addContacto = () => {
     setContactos([...contactos, { id: Date.now().toString(), nombre: '', cargo: '', telefono: '', correo: '', tipoContacto: 'otro' }]);
@@ -389,7 +423,7 @@ export default function NuevoActivoPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Documentos del Activo</CardTitle>
-                <CardDescription>Sube los documentos relacionados con este activo</CardDescription>
+                <CardDescription>Sube archivos o agrega links de Google Drive para cada documento</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {[
@@ -401,21 +435,92 @@ export default function NuevoActivoPage() {
                   { label: 'Estados de Cuenta', required: false },
                   { label: 'Fotografías', required: false },
                   { label: 'Documentos Legales', required: false },
-                ].map((doc) => (
-                  <div key={doc.label} className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
-                      <p className="font-medium">
-                        {doc.label}
-                        {doc.required && <span className="text-destructive ml-1">*</span>}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Sin archivo</p>
+                ].map((doc) => {
+                  const docState = documentos[doc.label];
+                  return (
+                    <div key={doc.label} className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {doc.label}
+                            {doc.required && <span className="text-destructive ml-1">*</span>}
+                          </p>
+                          {!docState?.tipo && (
+                            <p className="text-sm text-muted-foreground">Sin archivo ni link</p>
+                          )}
+                          {docState?.tipo === 'archivo' && docState.archivo && (
+                            <p className="text-sm text-emerald-600">Archivo: {docState.archivo.name}</p>
+                          )}
+                          {docState?.tipo === 'link' && docState.link && (
+                            <a href={docState.link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                              Ver en Google Drive <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                        {docState?.tipo && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeDocumento(doc.label)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {!docState?.tipo ? (
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.onchange = (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (file) handleFileChange(doc.label, file);
+                              };
+                              input.click();
+                            }}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Subir Archivo
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleDocumentoTipoChange(doc.label, 'link')}
+                          >
+                            <Link2 className="mr-2 h-4 w-4" />
+                            Agregar Link
+                          </Button>
+                        </div>
+                      ) : docState.tipo === 'link' && !docState.link ? (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="https://drive.google.com/..."
+                            className="flex-1"
+                            onBlur={(e) => handleLinkChange(doc.label, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleLinkChange(doc.label, (e.target as HTMLInputElement).value);
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeDocumento(doc.label)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
-                    <Button type="button" variant="outline" size="sm">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Subir
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           </TabsContent>
