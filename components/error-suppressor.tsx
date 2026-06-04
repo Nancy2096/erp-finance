@@ -2,56 +2,71 @@
 
 import { useEffect } from 'react';
 
-// Suprimir inmediatamente antes de que React se monte
+// Suprimir inmediatamente a nivel global antes de cualquier código React
 if (typeof window !== 'undefined') {
-  const originalError = window.onerror;
-  window.onerror = (message, ...args) => {
-    if (message && typeof message === 'string' && message.includes('ResizeObserver')) {
+  // Interceptar window.onerror
+  const originalOnError = window.onerror;
+  window.onerror = function(message, source, lineno, colno, error) {
+    if (message && String(message).includes('ResizeObserver')) {
       return true;
     }
-    return originalError ? originalError(message, ...args) : false;
+    if (originalOnError) {
+      return originalOnError.call(this, message, source, lineno, colno, error);
+    }
+    return false;
+  };
+
+  // Interceptar errores del event loop
+  const errorHandler = (e: ErrorEvent) => {
+    if (e.message && e.message.includes('ResizeObserver')) {
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+  window.addEventListener('error', errorHandler, true);
+
+  // Interceptar console.error globalmente
+  const originalConsoleError = console.error;
+  console.error = function(...args) {
+    const msg = args[0];
+    if (
+      (typeof msg === 'string' && msg.includes('ResizeObserver')) ||
+      (msg instanceof Error && msg.message && msg.message.includes('ResizeObserver')) ||
+      (args.some(arg => typeof arg === 'string' && arg.includes('ResizeObserver')))
+    ) {
+      return;
+    }
+    return originalConsoleError.apply(console, args);
   };
 }
 
 export function ErrorSuppressor() {
   useEffect(() => {
-    // Suprimir el error de ResizeObserver que es inofensivo
-    const resizeObserverErrorHandler = (e: ErrorEvent) => {
+    // Reforzar la supresión después del montaje de React
+    const handler = (e: ErrorEvent) => {
       if (e.message && e.message.includes('ResizeObserver')) {
         e.stopImmediatePropagation();
-        e.preventDefault();
-        return;
-      }
-    };
-
-    // Capturar errores con capture phase para interceptar antes
-    window.addEventListener('error', resizeObserverErrorHandler, true);
-    
-    // Sobrescribir console.error para filtrar este mensaje específico
-    const originalConsoleError = console.error;
-    console.error = (...args) => {
-      const message = args[0];
-      if (
-        (typeof message === 'string' && message.includes('ResizeObserver')) ||
-        (message instanceof Error && message.message.includes('ResizeObserver'))
-      ) {
-        return;
-      }
-      originalConsoleError.apply(console, args);
-    };
-
-    // Capturar unhandledrejection también
-    const unhandledRejectionHandler = (e: PromiseRejectionEvent) => {
-      if (e.reason && e.reason.message && e.reason.message.includes('ResizeObserver')) {
+        e.stopPropagation();
         e.preventDefault();
       }
     };
-    window.addEventListener('unhandledrejection', unhandledRejectionHandler);
+
+    const rejectionHandler = (e: PromiseRejectionEvent) => {
+      const reason = e.reason;
+      if (reason && ((typeof reason === 'string' && reason.includes('ResizeObserver')) ||
+          (reason.message && reason.message.includes('ResizeObserver')))) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+
+    window.addEventListener('error', handler, true);
+    window.addEventListener('unhandledrejection', rejectionHandler, true);
 
     return () => {
-      window.removeEventListener('error', resizeObserverErrorHandler, true);
-      window.removeEventListener('unhandledrejection', unhandledRejectionHandler);
-      console.error = originalConsoleError;
+      window.removeEventListener('error', handler, true);
+      window.removeEventListener('unhandledrejection', rejectionHandler, true);
     };
   }, []);
 

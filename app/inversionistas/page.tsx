@@ -31,6 +31,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
   Plus,
   Search,
   Filter,
@@ -44,8 +54,10 @@ import {
   FileText,
   Mail,
   Phone,
+  Trash2,
 } from 'lucide-react';
-import { inversionistas, activos } from '@/lib/mock-data';
+import { inversionistas as mockInversionistas, activos } from '@/lib/mock-data';
+import { useInversionistas } from '@/lib/inversionistas-context';
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -55,8 +67,24 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function InversionistasPage() {
+  const { inversionistas, updateInversionista, deleteInversionista, isLoaded } = useInversionistas();
   const [searchTerm, setSearchTerm] = useState('');
   const [estatusFilter, setEstatusFilter] = useState<string>('all');
+  
+  // Estados para editar inversionista
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedInversionista, setSelectedInversionista] = useState<typeof mockInversionistas[0] | null>(null);
+  const [editNombre, setEditNombre] = useState('');
+  const [editCorreo, setEditCorreo] = useState('');
+  const [editTelefono, setEditTelefono] = useState('');
+  const [editRfc, setEditRfc] = useState('');
+  const [editDireccion, setEditDireccion] = useState('');
+  const [editBanco, setEditBanco] = useState('');
+  const [editClabe, setEditClabe] = useState('');
+  const [editCuentaBancaria, setEditCuentaBancaria] = useState('');
+  const [editPorcentaje, setEditPorcentaje] = useState('');
+  const [editEstatus, setEditEstatus] = useState('');
+  const [editNotas, setEditNotas] = useState('');
 
   const filteredInversionistas = useMemo(() => {
     return inversionistas.filter((inv) => {
@@ -67,7 +95,7 @@ export default function InversionistasPage() {
       const matchesEstatus = estatusFilter === 'all' || inv.estatus === estatusFilter;
       return matchesSearch && matchesEstatus;
     });
-  }, [searchTerm, estatusFilter]);
+  }, [searchTerm, estatusFilter, inversionistas]);
 
   const stats = useMemo(() => {
     const totalInversionistas = inversionistas.length;
@@ -75,7 +103,67 @@ export default function InversionistasPage() {
     const totalDividendosRecibidos = inversionistas.reduce((sum, i) => sum + i.dividendosRecibidos, 0);
     const totalDividendosPendientes = inversionistas.reduce((sum, i) => sum + i.dividendosPendientes, 0);
     return { totalInversionistas, totalInvertido, totalDividendosRecibidos, totalDividendosPendientes };
-  }, []);
+  }, [inversionistas]);
+
+  const handleEliminar = (inv: typeof mockInversionistas[0]) => {
+    if (confirm(`¿Estás seguro de eliminar al inversionista "${inv.nombre}"? Esta acción eliminará también todas sus distribuciones asociadas.`)) {
+      deleteInversionista(inv.id);
+    }
+  };
+
+  const handleEditClick = (inv: typeof mockInversionistas[0]) => {
+    setSelectedInversionista(inv);
+    setEditNombre(inv.nombre);
+    setEditCorreo(inv.correo);
+    setEditTelefono(inv.telefono);
+    setEditRfc(inv.rfc);
+    setEditDireccion(inv.direccion);
+    setEditBanco(inv.banco);
+    setEditClabe(inv.clabe);
+    setEditCuentaBancaria(inv.cuentaBancaria);
+    setEditPorcentaje(inv.porcentajeParticipacion.toString());
+    setEditEstatus(inv.estatus);
+    setEditNotas(inv.notasInternas || '');
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedInversionista || !editNombre || !editCorreo) return;
+
+    updateInversionista(selectedInversionista.id, {
+      nombre: editNombre,
+      correo: editCorreo,
+      telefono: editTelefono,
+      rfc: editRfc,
+      direccion: editDireccion,
+      banco: editBanco,
+      clabe: editClabe,
+      cuentaBancaria: editCuentaBancaria,
+      porcentajeParticipacion: parseFloat(editPorcentaje) || 0,
+      estatus: editEstatus as 'activo' | 'inactivo',
+      notasInternas: editNotas,
+    });
+    
+    setEditDialogOpen(false);
+    setSelectedInversionista(null);
+  };
+
+  const handleEnviarCorreo = (inv: typeof mockInversionistas[0]) => {
+    window.location.href = `mailto:${inv.correo}?subject=Comunicación - ${inv.nombre}`;
+  };
+
+  const handleContactar = (inv: typeof mockInversionistas[0]) => {
+    if (inv.telefono) {
+      window.location.href = `tel:${inv.telefono}`;
+    } else {
+      alert('Este inversionista no tiene teléfono registrado.');
+    }
+  };
+
+  const handleGenerarReporte = (inv: typeof mockInversionistas[0]) => {
+    alert(`Generando reporte para ${inv.nombre}...`);
+    // Aquí iría la lógica para generar el reporte PDF
+  };
 
   const getInitials = (name: string) => {
     return name
@@ -197,7 +285,7 @@ export default function InversionistasPage() {
         </Card>
 
         {/* Inversionistas Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
           {filteredInversionistas.map((inv) => (
             <Card key={inv.id} className="overflow-hidden">
               <CardHeader className="pb-2">
@@ -243,9 +331,9 @@ export default function InversionistasPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Dividendos Pendientes</p>
-                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                      {formatCurrency(inv.dividendosPendientes)}
+                    <p className="text-xs text-muted-foreground">Distribuciones Recibidas</p>
+                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(inv.dividendosPagados)}
                     </p>
                   </div>
                 </div>
@@ -279,22 +367,30 @@ export default function InversionistasPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditClick(inv)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Editar
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleGenerarReporte(inv)}>
                         <FileText className="mr-2 h-4 w-4" />
                         Generar reporte
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEnviarCorreo(inv)}>
                         <Mail className="mr-2 h-4 w-4" />
                         Enviar correo
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleContactar(inv)}>
                         <Phone className="mr-2 h-4 w-4" />
                         Contactar
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleEliminar(inv)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Eliminar
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -322,6 +418,144 @@ export default function InversionistasPage() {
           </Card>
         )}
       </div>
+
+      {/* Dialog para Editar Inversionista */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Inversionista</DialogTitle>
+            <DialogDescription>
+              Modifica los datos del inversionista {selectedInversionista?.nombre}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editNombre">Nombre Completo *</Label>
+                <Input
+                  id="editNombre"
+                  value={editNombre}
+                  onChange={(e) => setEditNombre(e.target.value)}
+                  placeholder="Nombre del inversionista"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editCorreo">Correo Electronico *</Label>
+                <Input
+                  id="editCorreo"
+                  type="email"
+                  value={editCorreo}
+                  onChange={(e) => setEditCorreo(e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editTelefono">Telefono</Label>
+                <Input
+                  id="editTelefono"
+                  value={editTelefono}
+                  onChange={(e) => setEditTelefono(e.target.value)}
+                  placeholder="+52 81 1234 5678"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editRfc">RFC</Label>
+                <Input
+                  id="editRfc"
+                  value={editRfc}
+                  onChange={(e) => setEditRfc(e.target.value)}
+                  placeholder="XXXX000000XXX"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDireccion">Direccion</Label>
+              <Input
+                id="editDireccion"
+                value={editDireccion}
+                onChange={(e) => setEditDireccion(e.target.value)}
+                placeholder="Direccion completa"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editBanco">Banco</Label>
+                <Input
+                  id="editBanco"
+                  value={editBanco}
+                  onChange={(e) => setEditBanco(e.target.value)}
+                  placeholder="BBVA, Santander, etc."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editCuentaBancaria">Cuenta Bancaria</Label>
+                <Input
+                  id="editCuentaBancaria"
+                  value={editCuentaBancaria}
+                  onChange={(e) => setEditCuentaBancaria(e.target.value)}
+                  placeholder="Numero de cuenta"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editClabe">CLABE</Label>
+                <Input
+                  id="editClabe"
+                  value={editClabe}
+                  onChange={(e) => setEditClabe(e.target.value)}
+                  placeholder="18 digitos"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editPorcentaje">Porcentaje de Participacion (%)</Label>
+                <Input
+                  id="editPorcentaje"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={editPorcentaje}
+                  onChange={(e) => setEditPorcentaje(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editEstatus">Estatus</Label>
+                <Select value={editEstatus} onValueChange={setEditEstatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar estatus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="activo">Activo</SelectItem>
+                    <SelectItem value="inactivo">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editNotas">Notas Internas</Label>
+              <Textarea
+                id="editNotas"
+                value={editNotas}
+                onChange={(e) => setEditNotas(e.target.value)}
+                placeholder="Notas adicionales sobre el inversionista..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={!editNombre || !editCorreo}>
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

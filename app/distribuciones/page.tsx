@@ -51,8 +51,23 @@ import {
   Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { distribuciones as distribucionesData, inversionistas, activos } from '@/lib/mock-data';
+import { activos } from '@/lib/mock-data';
+import { useInversionistas } from '@/lib/inversionistas-context';
+import { useBancos } from '@/lib/bancos-context';
 import type { Distribucion, EstatusDistribucion } from '@/lib/types';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('es-MX', {
@@ -106,6 +121,8 @@ const estatusLabels: Record<EstatusDistribucion, string> = {
 };
 
 export default function DistribucionesPage() {
+  const { inversionistas, distribuciones, addDistribucion, updateDistribucion, deleteDistribucion, isLoaded } = useInversionistas();
+  const { cuentas, registrarDistribucion, eliminarMovimientoDistribucion, getSaldoTotal } = useBancos();
   const [searchTerm, setSearchTerm] = useState('');
   const [estatusFilter, setEstatusFilter] = useState<string>('all');
   const [inversionistaFilter, setInversionistaFilter] = useState<string>('all');
@@ -131,9 +148,6 @@ export default function DistribucionesPage() {
   const [editReferencia, setEditReferencia] = useState('');
   const [editComentarios, setEditComentarios] = useState('');
 
-  // Estado local para distribuciones
-  const [localDistribuciones, setLocalDistribuciones] = useState(distribucionesData);
-
   const resetNewForm = () => {
     setNewInversionistaId('');
     setNewActivoId('');
@@ -153,28 +167,38 @@ export default function DistribucionesPage() {
     const inv = inversionistas.find((i) => i.id === newInversionistaId);
     const activoIdFinal = newActivoId === 'none' ? undefined : newActivoId;
     const act = activoIdFinal ? activos.find((a) => a.id === activoIdFinal) : undefined;
+    const monto = parseFloat(newMontoCalculado) || 0;
+
+    // Generar ID único para la distribución
+    const distribucionId = `dist-${Date.now()}`;
 
     const nuevaDistribucion: Distribucion = {
-      id: `dist-${Date.now()}`,
+      id: distribucionId,
       inversionistaId: newInversionistaId,
       inversionistaNombre: inv?.nombre || '',
       activoId: activoIdFinal,
       activoNombre: act?.nombre,
       periodo: newPeriodo,
       fechaProgramada: newFechaProgramada,
-      montoCalculado: parseFloat(newMontoCalculado) || 0,
-      montoPagado: 0,
+      montoCalculado: monto,
+      montoPagado: monto, // Se marca como pagado al crear
       porcentajeParticipacion: inv?.porcentajeParticipacion || 0,
       metodoPago: newMetodoPago as 'transferencia' | 'cheque' | 'efectivo' | 'otro',
       cuentaDestino: inv?.cuentaBancaria,
       bancoDestino: inv?.banco,
-      estatus: 'programado',
+      estatus: 'pagado', // Se marca como pagado al crear
+      fechaPago: new Date().toISOString().split('T')[0],
       comentarios: newComentarios || undefined,
       creadoPor: 'Usuario Actual',
       fechaCreacion: new Date().toISOString().split('T')[0],
     };
 
-    setLocalDistribuciones([nuevaDistribucion, ...localDistribuciones]);
+    // Agregar la distribución
+    addDistribucion(nuevaDistribucion);
+    
+    // Registrar el egreso en bancos (cuenta-1 BBVA por defecto)
+    registrarDistribucion(distribucionId, inv?.nombre || '', monto, 'cuenta-1');
+
     resetNewForm();
     setDialogOpen(false);
   };
@@ -192,42 +216,31 @@ export default function DistribucionesPage() {
   const handleSaveEdit = () => {
     if (!selectedDistribucion) return;
 
-    setLocalDistribuciones(
-      localDistribuciones.map((d) =>
-        d.id === selectedDistribucion.id
-          ? {
-              ...d,
-              montoPagado: parseFloat(editMontoPagado) || 0,
-              fechaPago: editFechaPago || undefined,
-              estatus: editEstatus as EstatusDistribucion,
-              referencia: editReferencia || undefined,
-              comentarios: editComentarios || undefined,
-            }
-          : d
-      )
-    );
+    updateDistribucion(selectedDistribucion.id, {
+      montoPagado: parseFloat(editMontoPagado) || 0,
+      fechaPago: editFechaPago || undefined,
+      estatus: editEstatus as EstatusDistribucion,
+      referencia: editReferencia || undefined,
+      comentarios: editComentarios || undefined,
+    });
     setEditDialogOpen(false);
     setSelectedDistribucion(null);
   };
 
   const handleMarcarPagado = (dist: Distribucion) => {
-    setLocalDistribuciones(
-      localDistribuciones.map((d) =>
-        d.id === dist.id
-          ? {
-              ...d,
-              montoPagado: d.montoCalculado,
-              fechaPago: new Date().toISOString().split('T')[0],
-              estatus: 'pagado' as EstatusDistribucion,
-            }
-          : d
-      )
-    );
+    updateDistribucion(dist.id, {
+      montoPagado: dist.montoCalculado,
+      fechaPago: new Date().toISOString().split('T')[0],
+      estatus: 'pagado' as EstatusDistribucion,
+    });
   };
 
   const handleEliminar = (dist: Distribucion) => {
-    if (confirm(`¿Estás seguro de eliminar la distribución de ${dist.inversionistaNombre} - ${dist.periodo}?`)) {
-      setLocalDistribuciones(localDistribuciones.filter((d) => d.id !== dist.id));
+    if (confirm(`¿Estás seguro de eliminar la distribución de ${dist.inversionistaNombre} - ${dist.periodo}? Esto también revertirá el egreso en bancos.`)) {
+      // Eliminar el movimiento bancario asociado (revierte el saldo)
+      eliminarMovimientoDistribucion(dist.id);
+      // Eliminar la distribución
+      deleteDistribucion(dist.id);
     }
   };
 
@@ -242,7 +255,7 @@ export default function DistribucionesPage() {
   const hayFiltros = searchTerm || estatusFilter !== 'all' || inversionistaFilter !== 'all' || fechaInicio || fechaFin;
 
   const filteredDistribuciones = useMemo(() => {
-    return localDistribuciones.filter((dist) => {
+    return distribuciones.filter((dist) => {
       const matchesSearch =
         dist.inversionistaNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         dist.periodo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -259,16 +272,92 @@ export default function DistribucionesPage() {
 
       return matchesSearch && matchesEstatus && matchesInversionista && matchesFecha;
     });
-  }, [searchTerm, estatusFilter, inversionistaFilter, fechaInicio, fechaFin, localDistribuciones]);
+  }, [searchTerm, estatusFilter, inversionistaFilter, fechaInicio, fechaFin, distribuciones]);
 
   const stats = useMemo(() => {
-    const totalCalculado = localDistribuciones.reduce((sum, d) => sum + d.montoCalculado, 0);
-    const totalPagado = localDistribuciones.reduce((sum, d) => sum + d.montoPagado, 0);
+    const totalCalculado = distribuciones.reduce((sum, d) => sum + d.montoCalculado, 0);
+    const totalPagado = distribuciones.reduce((sum, d) => sum + d.montoPagado, 0);
     const pendiente = totalCalculado - totalPagado;
-    const pagados = localDistribuciones.filter((d) => d.estatus === 'pagado').length;
-    const pendientes = localDistribuciones.filter((d) => d.estatus === 'pendiente' || d.estatus === 'programado').length;
+    const pagados = distribuciones.filter((d) => d.estatus === 'pagado').length;
+    const pendientes = distribuciones.filter((d) => d.estatus === 'pendiente' || d.estatus === 'programado').length;
     return { totalCalculado, totalPagado, pendiente, pagados, pendientes };
-  }, [localDistribuciones]);
+  }, [distribuciones]);
+
+  // Datos para gráfica por inversionista
+  const chartDataPorInversionista = useMemo(() => {
+    const porInversionista: Record<string, { nombre: string; pagado: number; pendiente: number; total: number }> = {};
+    
+    distribuciones.forEach((d) => {
+      if (!porInversionista[d.inversionistaNombre]) {
+        porInversionista[d.inversionistaNombre] = { nombre: d.inversionistaNombre, pagado: 0, pendiente: 0, total: 0 };
+      }
+      porInversionista[d.inversionistaNombre].pagado += d.montoPagado;
+      porInversionista[d.inversionistaNombre].pendiente += d.montoCalculado - d.montoPagado;
+      porInversionista[d.inversionistaNombre].total += d.montoCalculado;
+    });
+    
+    return Object.values(porInversionista);
+  }, [distribuciones]);
+
+  // Datos para gráfica de porcentaje de distribución por inversionista (pie)
+  const chartDataPorcentajeDistribucion = useMemo(() => {
+    const porInversionista: Record<string, number> = {};
+    
+    distribuciones.forEach((d) => {
+      porInversionista[d.inversionistaNombre] = (porInversionista[d.inversionistaNombre] || 0) + d.montoCalculado;
+    });
+    
+    const total = Object.values(porInversionista).reduce((sum, val) => sum + val, 0);
+    
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+    
+    return Object.entries(porInversionista).map(([nombre, monto], index) => ({
+      nombre,
+      monto,
+      porcentaje: total > 0 ? ((monto / total) * 100).toFixed(1) : '0',
+      color: colors[index % colors.length],
+    }));
+  }, [distribuciones]);
+
+  // Datos para gráfica de estatus (pie chart) - Pagado vs Saldo en Bancos
+  const saldoBancos = getSaldoTotal(); // Saldo total real desde el contexto de bancos
+  const totalPagadoInversionistas = distribuciones.reduce((sum, d) => sum + d.montoPagado, 0);
+  
+  const chartDataEstatus = useMemo(() => {
+    return [
+      {
+        name: 'Pagado a Inversionistas',
+        value: totalPagadoInversionistas,
+        color: '#10b981',
+      },
+      {
+        name: 'Saldo en Bancos',
+        value: saldoBancos,
+        color: '#3b82f6',
+      },
+    ];
+  }, [totalPagadoInversionistas, saldoBancos]);
+
+  // Datos para gráfica por periodo
+  const chartDataPorPeriodo = useMemo(() => {
+    const porPeriodo: Record<string, { pagado: number; calculado: number }> = {};
+    
+    distribuciones.forEach((d) => {
+      if (!porPeriodo[d.periodo]) {
+        porPeriodo[d.periodo] = { pagado: 0, calculado: 0 };
+      }
+      porPeriodo[d.periodo].pagado += d.montoPagado;
+      porPeriodo[d.periodo].calculado += d.montoCalculado;
+    });
+    
+    return Object.entries(porPeriodo)
+      .map(([periodo, data]) => ({
+        periodo,
+        pagado: data.pagado,
+        calculado: data.calculado,
+      }))
+      .sort((a, b) => a.periodo.localeCompare(b.periodo));
+  }, [distribuciones]);
 
   return (
     <DashboardLayout>
@@ -331,6 +420,209 @@ export default function DistribucionesPage() {
             <CardContent>
               <div className="text-2xl font-bold">{inversionistas.filter((i) => i.estatus === 'activo').length}</div>
               <p className="text-xs text-muted-foreground">Inversionistas activos</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Graficas de Distribuciones */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Grafica de Porcentaje de Distribución por Inversionista (Pie) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Participacion en Distribuciones</CardTitle>
+              <CardDescription>Porcentaje de distribuciones por inversionista</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {chartDataPorcentajeDistribucion.length === 0 ? (
+                <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+                  No hay distribuciones registradas
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartDataPorcentajeDistribucion}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={85}
+                          paddingAngle={3}
+                          dataKey="monto"
+                          nameKey="nombre"
+                        >
+                          {chartDataPorcentajeDistribucion.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-4">
+                    {chartDataPorcentajeDistribucion.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-sm">{item.nombre} ({item.porcentaje}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Grafica de Pagado vs Saldo en Bancos (Pie) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Pagado vs Saldo en Bancos</CardTitle>
+              <CardDescription>Comparativa de distribuciones pagadas y saldo disponible</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {chartDataEstatus.length === 0 ? (
+                <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+                  No hay distribuciones registradas
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartDataEstatus}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={85}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {chartDataEstatus.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value: number) => formatCurrency(value)}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-4">
+                    {chartDataEstatus.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-sm">{item.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Grafica por Inversionista - Tabla visual mejorada */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">Distribuciones por Inversionista</CardTitle>
+              <CardDescription>Desglose de montos pagados y pendientes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {chartDataPorInversionista.length === 0 ? (
+                <div className="flex items-center justify-center h-32 text-muted-foreground">
+                  No hay distribuciones registradas
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {chartDataPorInversionista.map((inv, index) => {
+                    const porcentajePagado = inv.total > 0 ? (inv.pagado / inv.total) * 100 : 0;
+                    return (
+                      <div key={index} className="space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <span className="font-semibold text-base">{inv.nombre}</span>
+                          <div className="flex flex-wrap items-center gap-3 text-sm">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                              <span>Pagado: <span className="font-medium text-emerald-600">{formatCurrency(inv.pagado)}</span></span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-3 h-3 rounded-full bg-amber-500" />
+                              <span>Pendiente: <span className="font-medium text-amber-600">{formatCurrency(inv.pendiente)}</span></span>
+                            </div>
+                            <span className="text-muted-foreground">Total: {formatCurrency(inv.total)}</span>
+                          </div>
+                        </div>
+                        <div className="relative h-6 w-full rounded-full bg-muted overflow-hidden">
+                          {porcentajePagado > 0 && (
+                            <div 
+                              className="absolute inset-y-0 left-0 bg-emerald-500 transition-all"
+                              style={{ width: `${porcentajePagado}%`, borderRadius: porcentajePagado === 100 ? '9999px' : '9999px 0 0 9999px' }}
+                            />
+                          )}
+                          {porcentajePagado < 100 && (
+                            <div 
+                              className="absolute inset-y-0 bg-amber-500 transition-all"
+                              style={{ 
+                                left: `${porcentajePagado}%`, 
+                                width: `${100 - porcentajePagado}%`,
+                                borderRadius: porcentajePagado === 0 ? '9999px' : '0 9999px 9999px 0'
+                              }}
+                            />
+                          )}
+                        </div>
+                        <div className="text-center text-sm font-medium text-muted-foreground">
+                          {porcentajePagado.toFixed(0)}% pagado
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Grafica por Periodo */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">Distribuciones por Periodo</CardTitle>
+              <CardDescription>Comparativa de montos calculados vs pagados por periodo</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartDataPorPeriodo} margin={{ left: 20, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="periodo" className="text-xs" />
+                    <YAxis 
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      className="text-xs"
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="calculado" name="Calculado" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="pagado" name="Pagado" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </div>
