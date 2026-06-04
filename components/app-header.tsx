@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Bell, Plus, Search, Menu } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,13 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AppSidebar } from './app-sidebar';
@@ -28,11 +20,10 @@ import { getAlertaColor } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 export function AppHeader() {
-  const [periodo, setPeriodo] = useState('mayo-2025');
   const alertasPendientes = alertas.filter((a) => a.estatus === 'pendiente');
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:px-6">
       {/* Mobile Menu */}
       <Sheet>
         <SheetTrigger asChild>
@@ -46,39 +37,8 @@ export function AppHeader() {
         </SheetContent>
       </Sheet>
 
-      {/* Search */}
-      <div className="relative flex-1 max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Buscar activos, inversionistas..."
-          className="w-full pl-9 bg-secondary/50 border-0 focus-visible:ring-1"
-        />
-      </div>
-
-      {/* Period Selector */}
-      <Select value={periodo} onValueChange={setPeriodo}>
-        <SelectTrigger className="w-[160px] bg-secondary/50 border-0">
-          <SelectValue placeholder="Seleccionar periodo" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="mayo-2025">Mayo 2025</SelectItem>
-          <SelectItem value="abril-2025">Abril 2025</SelectItem>
-          <SelectItem value="marzo-2025">Marzo 2025</SelectItem>
-          <SelectItem value="febrero-2025">Febrero 2025</SelectItem>
-          <SelectItem value="enero-2025">Enero 2025</SelectItem>
-          <SelectItem value="2024">Año 2024</SelectItem>
-          <SelectItem value="2023">Año 2023</SelectItem>
-        </SelectContent>
-      </Select>
-
-      {/* New Asset Button */}
-      <Button asChild className="hidden sm:flex">
-        <Link href="/activos/nuevo">
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Activo
-        </Link>
-      </Button>
+      {/* Spacer for desktop */}
+      <div className="hidden lg:block flex-1" />
 
       {/* Notifications */}
       <DropdownMenu>
