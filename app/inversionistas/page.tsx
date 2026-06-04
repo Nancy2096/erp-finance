@@ -336,9 +336,9 @@ export default function InversionistasPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Dividendos Pendientes</p>
-                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                      {formatCurrency(inv.dividendosPendientes)}
+                    <p className="text-xs text-muted-foreground">Distribuciones Recibidas</p>
+                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(inv.dividendosPagados)}
                     </p>
                   </div>
                 </div>
