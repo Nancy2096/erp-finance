@@ -17,10 +17,37 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Save, Plus, Trash2, Upload, Link2, ExternalLink } from 'lucide-react';
+import { useActivos } from '@/lib/activos-context';
 
 export default function NuevoActivoPage() {
   const router = useRouter();
+  const { addActivo } = useActivos();
   const [contactos, setContactos] = useState([{ id: '1', nombre: '', cargo: '', telefono: '', correo: '', tipoContacto: 'vendedor' }]);
+  
+  // Estados del formulario general
+  const [nombre, setNombre] = useState('');
+  const [tipoActivo, setTipoActivo] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [direccion, setDireccion] = useState('');
+  const [colonia, setColonia] = useState('');
+  const [ciudad, setCiudad] = useState('');
+  const [estado, setEstado] = useState('');
+  const [codigoPostal, setCodigoPostal] = useState('');
+  const [pais, setPais] = useState('Mexico');
+  const [responsableInterno, setResponsableInterno] = useState('');
+  const [estatusActivo, setEstatusActivo] = useState('en_proceso');
+  
+  // Estados de empresa
+  const [empresaRelacionada, setEmpresaRelacionada] = useState('');
+  const [razonSocial, setRazonSocial] = useState('');
+  const [rfcEmpresa, setRfcEmpresa] = useState('');
+  const [direccionFiscal, setDireccionFiscal] = useState('');
+  
+  // Estados financieros
+  const [montoPagado, setMontoPagado] = useState('');
+  const [montoPendiente, setMontoPendiente] = useState('');
+  const [formaCompra, setFormaCompra] = useState('contado');
+  const [fechaCompra, setFechaCompra] = useState('');
   
   // Estados para rentabilidad
   const [valorTotal, setValorTotal] = useState('');
@@ -92,7 +119,54 @@ export default function NuevoActivoPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simular guardado
+    
+    if (!nombre || !tipoActivo) {
+      alert('Por favor complete los campos requeridos (Nombre y Tipo de Activo)');
+      return;
+    }
+
+    addActivo({
+      nombre,
+      tipoActivo: tipoActivo as 'inmueble' | 'vehiculo' | 'equipo' | 'inversion' | 'otro',
+      empresaRelacionada,
+      razonSocial,
+      rfc: rfcEmpresa,
+      direccionFiscal,
+      datosLegales: '',
+      descripcion,
+      ubicacion: `${ciudad}, ${estado}`,
+      ubicacionDetalle: {
+        direccion,
+        colonia,
+        ciudad,
+        estado,
+        codigoPostal,
+        pais,
+      },
+      responsableInterno,
+      estado: estatusActivo as 'activo' | 'en_proceso' | 'vendido' | 'inactivo',
+      valorTotal: parseFloat(valorTotal) || 0,
+      montoInicial: parseFloat(valorTotal) || 0,
+      montoPagado: parseFloat(montoPagado) || 0,
+      montoPendiente: parseFloat(montoPendiente) || 0,
+      formaCompra: formaCompra as 'contado' | 'parcialidades',
+      fechaCompra: fechaCompra || new Date().toISOString().split('T')[0],
+      rentabilidadMensual: parseFloat(rentabilidadMensual) || 0,
+      rentabilidadAnual: parseFloat(rentabilidadAnual) || 0,
+      porcentajeRentabilidad: parseFloat(porcentajeRentabilidad) || 0,
+      porcentajeApreciacion: parseFloat(porcentajeApreciacion) || 0,
+      periodicidadDividendos: periodicidadDividendos as 'mensual' | 'trimestral' | 'semestral' | 'anual',
+      dividendosAcumulados: 0,
+      valorActual: parseFloat(valorTotal) || 0,
+      imageUrl: '',
+      documentos: [],
+      contactos: contactos.filter(c => c.nombre).map(c => ({
+        ...c,
+        tipoContacto: c.tipoContacto as 'vendedor' | 'arrendatario' | 'administrador' | 'otro',
+      })),
+      planPagos: [],
+    });
+    
     router.push('/activos');
   };
 
@@ -143,36 +217,34 @@ export default function NuevoActivoPage() {
               <CardContent className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="nombre">Nombre del Activo *</Label>
-                  <Input id="nombre" placeholder="Ej: Pool de Rentas Corporativo Monterrey" required />
+                  <Input id="nombre" placeholder="Ej: Pool de Rentas Corporativo Monterrey" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="tipoActivo">Tipo de Activo *</Label>
-                  <Select required>
+                  <Select required value={tipoActivo} onValueChange={setTipoActivo}>
                     <SelectTrigger id="tipoActivo">
                       <SelectValue placeholder="Seleccionar tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="inmueble_completo">Inmueble completo</SelectItem>
-                      <SelectItem value="pool_rentas">Pool de rentas</SelectItem>
-                      <SelectItem value="participacion_parcial">Participación parcial</SelectItem>
-                      <SelectItem value="camion_renta">Camión en renta</SelectItem>
-                      <SelectItem value="terreno">Terreno</SelectItem>
-                      <SelectItem value="local_comercial">Local comercial</SelectItem>
+                      <SelectItem value="inmueble">Inmueble completo</SelectItem>
+                      <SelectItem value="inversion">Pool de rentas / Inversion</SelectItem>
+                      <SelectItem value="vehiculo">Vehiculo</SelectItem>
+                      <SelectItem value="equipo">Equipo</SelectItem>
                       <SelectItem value="otro">Otro</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="estado">Estado Actual *</Label>
-                  <Select required>
+                  <Select required value={estatusActivo} onValueChange={setEstatusActivo}>
                     <SelectTrigger id="estado">
                       <SelectValue placeholder="Seleccionar estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="en_analisis">En análisis</SelectItem>
-                      <SelectItem value="en_negociacion">En negociación</SelectItem>
-                      <SelectItem value="en_proceso_compra">En proceso de compra</SelectItem>
-                      <SelectItem value="en_pago">En pago</SelectItem>
+                      <SelectItem value="en_proceso">En proceso</SelectItem>
+                      <SelectItem value="activo">Activo</SelectItem>
+                      <SelectItem value="vendido">Vendido</SelectItem>
+                      <SelectItem value="inactivo">Inactivo</SelectItem>
                       <SelectItem value="en_espera_entrega">En espera de entrega</SelectItem>
                       <SelectItem value="en_espera_operacion">En espera de operación</SelectItem>
                       <SelectItem value="generando_rentas">Generando rentas</SelectItem>
@@ -180,29 +252,31 @@ export default function NuevoActivoPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ubicacion">Ubicación</Label>
-                  <Input id="ubicacion" placeholder="Ciudad, Estado" />
+                  <Label htmlFor="ubicacion">Ubicacion</Label>
+                  <Input id="ubicacion" placeholder="Ciudad, Estado" value={ciudad} onChange={(e) => setCiudad(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="responsable">Responsable Interno</Label>
-                  <Select>
+                  <Select value={responsableInterno} onValueChange={setResponsableInterno}>
                     <SelectTrigger id="responsable">
                       <SelectValue placeholder="Seleccionar responsable" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="carlos">Carlos Mendoza</SelectItem>
-                      <SelectItem value="ana">Ana García</SelectItem>
-                      <SelectItem value="roberto">Roberto Sánchez</SelectItem>
-                      <SelectItem value="maria">María López</SelectItem>
+                      <SelectItem value="Carlos Mendoza">Carlos Mendoza</SelectItem>
+                      <SelectItem value="Ana Garcia">Ana Garcia</SelectItem>
+                      <SelectItem value="Roberto Sanchez">Roberto Sanchez</SelectItem>
+                      <SelectItem value="Maria Lopez">Maria Lopez</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="descripcion">Descripción</Label>
+                  <Label htmlFor="descripcion">Descripcion</Label>
                   <Textarea
                     id="descripcion"
-                    placeholder="Descripción detallada del activo..."
+                    placeholder="Descripcion detallada del activo..."
                     rows={4}
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
                   />
                 </div>
               </CardContent>
@@ -216,11 +290,11 @@ export default function NuevoActivoPage() {
               <CardContent className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="empresaRelacionada">Nombre de la Empresa</Label>
-                  <Input id="empresaRelacionada" placeholder="Ej: Grupo Patrimonial Norte" />
+                  <Input id="empresaRelacionada" placeholder="Ej: Grupo Patrimonial Norte" value={empresaRelacionada} onChange={(e) => setEmpresaRelacionada(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="razonSocial">Razón Social</Label>
-                  <Input id="razonSocial" placeholder="Ej: Grupo Patrimonial Norte S.A. de C.V." />
+                  <Label htmlFor="razonSocial">Razon Social</Label>
+                  <Input id="razonSocial" placeholder="Ej: Grupo Patrimonial Norte S.A. de C.V." value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rfc">RFC</Label>
@@ -265,15 +339,15 @@ export default function NuevoActivoPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="montoInicial">Monto Inicial Pagado</Label>
-                  <Input id="montoInicial" type="number" placeholder="0" min="0" step="1000" />
+                  <Input id="montoInicial" type="number" placeholder="0" min="0" step="1000" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="montoPendiente">Monto Pendiente</Label>
-                  <Input id="montoPendiente" type="number" placeholder="0" min="0" step="1000" readOnly className="bg-muted" />
+                  <Input id="montoPendiente" type="number" placeholder="0" min="0" step="1000" value={montoPendiente} onChange={(e) => setMontoPendiente(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="formaCompra">Forma de Compra</Label>
-                  <Select>
+                  <Select value={formaCompra} onValueChange={setFormaCompra}>
                     <SelectTrigger id="formaCompra">
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
@@ -285,7 +359,7 @@ export default function NuevoActivoPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="fechaCompra">Fecha de Compra</Label>
-                  <Input id="fechaCompra" type="date" />
+                  <Input id="fechaCompra" type="date" value={fechaCompra} onChange={(e) => setFechaCompra(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="fechaLimitePago">Fecha Límite de Pago</Label>

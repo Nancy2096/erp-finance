@@ -45,7 +45,8 @@ import {
   DollarSign,
   FileText,
 } from 'lucide-react';
-import { pagos, activos } from '@/lib/mock-data';
+import { activos } from '@/lib/mock-data';
+import { usePagos } from '@/lib/pagos-context';
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -55,10 +56,65 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function PagosPage() {
+  const { pagos, addPago, isLoaded } = usePagos();
   const [searchTerm, setSearchTerm] = useState('');
   const [estatusFilter, setEstatusFilter] = useState<string>('all');
   const [tipoFilter, setTipoFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Estados para nuevo pago
+  const [newActivoId, setNewActivoId] = useState('');
+  const [newTipoPago, setNewTipoPago] = useState('');
+  const [newFecha, setNewFecha] = useState('');
+  const [newMonto, setNewMonto] = useState('');
+  const [newMetodoPago, setNewMetodoPago] = useState('');
+  const [newCuentaOrigen, setNewCuentaOrigen] = useState('');
+  const [newDestinatario, setNewDestinatario] = useState('');
+  const [newEmpresaReceptora, setNewEmpresaReceptora] = useState('');
+  const [newConcepto, setNewConcepto] = useState('');
+  const [newComentarios, setNewComentarios] = useState('');
+  const [newEstatus, setNewEstatus] = useState('pendiente');
+
+  const resetForm = () => {
+    setNewActivoId('');
+    setNewTipoPago('');
+    setNewFecha('');
+    setNewMonto('');
+    setNewMetodoPago('');
+    setNewCuentaOrigen('');
+    setNewDestinatario('');
+    setNewEmpresaReceptora('');
+    setNewConcepto('');
+    setNewComentarios('');
+    setNewEstatus('pendiente');
+  };
+
+  const handleSavePago = () => {
+    if (!newActivoId || !newMonto || !newConcepto) {
+      alert('Por favor complete los campos requeridos');
+      return;
+    }
+    
+    const activoSeleccionado = activos.find(a => a.id === newActivoId);
+    addPago({
+      activoId: newActivoId,
+      activoNombre: activoSeleccionado?.nombre || '',
+      tipoPago: newTipoPago || 'otro',
+      fecha: newFecha || new Date().toISOString().split('T')[0],
+      monto: parseFloat(newMonto),
+      metodoPago: newMetodoPago,
+      cuentaBancariaOrigen: newCuentaOrigen,
+      destinatario: newDestinatario,
+      empresaReceptora: newEmpresaReceptora,
+      concepto: newConcepto,
+      responsable: '',
+      comentarios: newComentarios,
+      estatus: newEstatus as 'completado' | 'pendiente' | 'cancelado' | 'programado',
+    });
+    
+    resetForm();
+    setDialogOpen(false);
+  };
 
   const filteredPagos = useMemo(() => {
     return pagos.filter((pago) => {
