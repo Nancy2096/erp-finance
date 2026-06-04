@@ -32,6 +32,7 @@ import {
 } from "lucide-react"
 import { mockFinancialRecords, mockAssets } from "@/lib/mock-data"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { useBancos } from "@/lib/bancos-context"
 import {
   AreaChart,
   Area,
@@ -65,125 +66,8 @@ const expenseCategories = [
   { name: "Otros", value: 8, color: "#64748b" },
 ]
 
-// Datos de cuentas bancarias
-const cuentasBancarias = [
-  {
-    id: 'cuenta-1',
-    banco: 'BBVA',
-    tipoCuenta: 'Cuenta Corriente',
-    numeroCuenta: '****4521',
-    clabe: '012180001234567890',
-    saldo: 2850000,
-    moneda: 'MXN',
-    color: '#0d47a1',
-  },
-  {
-    id: 'cuenta-2',
-    banco: 'Banorte',
-    tipoCuenta: 'Cuenta de Inversión',
-    numeroCuenta: '****7832',
-    clabe: '072180009876543210',
-    saldo: 1250000,
-    moneda: 'MXN',
-    color: '#c62828',
-  },
-  {
-    id: 'cuenta-3',
-    banco: 'Santander',
-    tipoCuenta: 'Cuenta Empresarial',
-    numeroCuenta: '****2156',
-    clabe: '014180005555666677',
-    saldo: 890000,
-    moneda: 'MXN',
-    color: '#e53935',
-  },
-]
-
-// Movimientos bancarios
-const movimientosBancarios = [
-  {
-    id: 'mov-1',
-    fecha: '2024-01-15',
-    tipo: 'entrada',
-    concepto: 'Renta Pool Corporativo Monterrey - Enero',
-    monto: 120000,
-    cuentaId: 'cuenta-1',
-    referencia: 'REF-2024-001',
-    saldoResultante: 2850000,
-  },
-  {
-    id: 'mov-2',
-    fecha: '2024-01-14',
-    tipo: 'salida',
-    concepto: 'Pago mantenimiento edificio',
-    monto: 45000,
-    cuentaId: 'cuenta-1',
-    referencia: 'REF-2024-002',
-    saldoResultante: 2730000,
-  },
-  {
-    id: 'mov-3',
-    fecha: '2024-01-13',
-    tipo: 'entrada',
-    concepto: 'Renta Depto Roma Norte - Enero',
-    monto: 35000,
-    cuentaId: 'cuenta-2',
-    referencia: 'REF-2024-003',
-    saldoResultante: 1250000,
-  },
-  {
-    id: 'mov-4',
-    fecha: '2024-01-12',
-    tipo: 'salida',
-    concepto: 'Distribución a inversionista - Carlos Rodríguez',
-    monto: 85000,
-    cuentaId: 'cuenta-1',
-    referencia: 'DIST-2024-001',
-    saldoResultante: 2775000,
-  },
-  {
-    id: 'mov-5',
-    fecha: '2024-01-11',
-    tipo: 'entrada',
-    concepto: 'Renta Camión Refrigerado - Enero',
-    monto: 55000,
-    cuentaId: 'cuenta-3',
-    referencia: 'REF-2024-004',
-    saldoResultante: 890000,
-  },
-  {
-    id: 'mov-6',
-    fecha: '2024-01-10',
-    tipo: 'salida',
-    concepto: 'Pago de impuestos prediales',
-    monto: 28000,
-    cuentaId: 'cuenta-2',
-    referencia: 'REF-2024-005',
-    saldoResultante: 1215000,
-  },
-  {
-    id: 'mov-7',
-    fecha: '2024-01-09',
-    tipo: 'salida',
-    concepto: 'Distribución a inversionista - María González',
-    monto: 62000,
-    cuentaId: 'cuenta-1',
-    referencia: 'DIST-2024-002',
-    saldoResultante: 2860000,
-  },
-  {
-    id: 'mov-8',
-    fecha: '2024-01-08',
-    tipo: 'entrada',
-    concepto: 'Transferencia entre cuentas',
-    monto: 200000,
-    cuentaId: 'cuenta-3',
-    referencia: 'TRANSF-001',
-    saldoResultante: 835000,
-  },
-]
-
 export default function FinanzasPage() {
+  const { cuentas: cuentasBancarias, movimientos: movimientosBancarios, getSaldoTotal } = useBancos()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   const [isNewRecordOpen, setIsNewRecordOpen] = useState(false)
@@ -575,7 +459,7 @@ export default function FinanzasPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-primary">
-                    {formatCurrency(cuentasBancarias.reduce((sum, c) => sum + c.saldo, 0))}
+                    {formatCurrency(getSaldoTotal())}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     En {cuentasBancarias.length} cuentas activas
@@ -762,7 +646,7 @@ export default function FinanzasPage() {
                   </div>
                   <div className="flex flex-col justify-center space-y-4">
                     {cuentasBancarias.map((cuenta) => {
-                      const total = cuentasBancarias.reduce((sum, c) => sum + c.saldo, 0);
+                      const total = getSaldoTotal();
                       const porcentaje = ((cuenta.saldo / total) * 100).toFixed(1);
                       return (
                         <div key={cuenta.id} className="flex items-center gap-3">

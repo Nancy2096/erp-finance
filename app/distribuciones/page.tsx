@@ -53,6 +53,7 @@ import {
 import { cn } from '@/lib/utils';
 import { activos } from '@/lib/mock-data';
 import { useInversionistas } from '@/lib/inversionistas-context';
+import { useBancos } from '@/lib/bancos-context';
 import type { Distribucion, EstatusDistribucion } from '@/lib/types';
 import {
   BarChart,
@@ -121,6 +122,7 @@ const estatusLabels: Record<EstatusDistribucion, string> = {
 
 export default function DistribucionesPage() {
   const { inversionistas, distribuciones, addDistribucion, updateDistribucion, deleteDistribucion, isLoaded } = useInversionistas();
+  const { cuentas, registrarDistribucion, eliminarMovimientoDistribucion, getSaldoTotal } = useBancos();
   const [searchTerm, setSearchTerm] = useState('');
   const [estatusFilter, setEstatusFilter] = useState<string>('all');
   const [inversionistaFilter, setInversionistaFilter] = useState<string>('all');
@@ -165,27 +167,38 @@ export default function DistribucionesPage() {
     const inv = inversionistas.find((i) => i.id === newInversionistaId);
     const activoIdFinal = newActivoId === 'none' ? undefined : newActivoId;
     const act = activoIdFinal ? activos.find((a) => a.id === activoIdFinal) : undefined;
+    const monto = parseFloat(newMontoCalculado) || 0;
 
-    const nuevaDistribucion: Omit<Distribucion, 'id'> = {
+    // Generar ID único para la distribución
+    const distribucionId = `dist-${Date.now()}`;
+
+    const nuevaDistribucion: Distribucion = {
+      id: distribucionId,
       inversionistaId: newInversionistaId,
       inversionistaNombre: inv?.nombre || '',
       activoId: activoIdFinal,
       activoNombre: act?.nombre,
       periodo: newPeriodo,
       fechaProgramada: newFechaProgramada,
-      montoCalculado: parseFloat(newMontoCalculado) || 0,
-      montoPagado: 0,
+      montoCalculado: monto,
+      montoPagado: monto, // Se marca como pagado al crear
       porcentajeParticipacion: inv?.porcentajeParticipacion || 0,
       metodoPago: newMetodoPago as 'transferencia' | 'cheque' | 'efectivo' | 'otro',
       cuentaDestino: inv?.cuentaBancaria,
       bancoDestino: inv?.banco,
-      estatus: 'programado',
+      estatus: 'pagado', // Se marca como pagado al crear
+      fechaPago: new Date().toISOString().split('T')[0],
       comentarios: newComentarios || undefined,
       creadoPor: 'Usuario Actual',
       fechaCreacion: new Date().toISOString().split('T')[0],
     };
 
-    addDistribucion(nuevaDistribucion as Distribucion);
+    // Agregar la distribución
+    addDistribucion(nuevaDistribucion);
+    
+    // Registrar el egreso en bancos (cuenta-1 BBVA por defecto)
+    registrarDistribucion(distribucionId, inv?.nombre || '', monto, 'cuenta-1');
+
     resetNewForm();
     setDialogOpen(false);
   };
@@ -223,7 +236,10 @@ export default function DistribucionesPage() {
   };
 
   const handleEliminar = (dist: Distribucion) => {
-    if (confirm(`¿Estás seguro de eliminar la distribución de ${dist.inversionistaNombre} - ${dist.periodo}?`)) {
+    if (confirm(`¿Estás seguro de eliminar la distribución de ${dist.inversionistaNombre} - ${dist.periodo}? Esto también revertirá el egreso en bancos.`)) {
+      // Eliminar el movimiento bancario asociado (revierte el saldo)
+      eliminarMovimientoDistribucion(dist.id);
+      // Eliminar la distribución
       deleteDistribucion(dist.id);
     }
   };
@@ -304,7 +320,7 @@ export default function DistribucionesPage() {
   }, [distribuciones]);
 
   // Datos para gráfica de estatus (pie chart) - Pagado vs Saldo en Bancos
-  const saldoBancos = 4990000; // Saldo total en bancos (BBVA + Banorte + Santander)
+  const saldoBancos = getSaldoTotal(); // Saldo total real desde el contexto de bancos
   const totalPagadoInversionistas = distribuciones.reduce((sum, d) => sum + d.montoPagado, 0);
   
   const chartDataEstatus = useMemo(() => {
@@ -320,7 +336,7 @@ export default function DistribucionesPage() {
         color: '#3b82f6',
       },
     ];
-  }, [totalPagadoInversionistas]);
+  }, [totalPagadoInversionistas, saldoBancos]);
 
   // Datos para gráfica por periodo
   const chartDataPorPeriodo = useMemo(() => {
