@@ -423,41 +423,45 @@ export default function DistribucionesPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[300px] flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartDataPorcentajeDistribucion}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={3}
-                      dataKey="monto"
-                      nameKey="nombre"
-                    >
-                      {chartDataPorcentajeDistribucion.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value: number, name: string) => [formatCurrency(value), name]}
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Legend 
-                      layout="vertical" 
-                      align="right" 
-                      verticalAlign="middle"
-                      formatter={(value, entry) => {
-                        const item = chartDataPorcentajeDistribucion.find(d => d.nombre === value);
-                        return `${value} (${item?.porcentaje}%)`;
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                {chartDataPorcentajeDistribucion.length === 0 ? (
+                  <div className="text-muted-foreground">No hay distribuciones registradas</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartDataPorcentajeDistribucion}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={3}
+                        dataKey="monto"
+                        nameKey="nombre"
+                      >
+                        {chartDataPorcentajeDistribucion.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Legend 
+                        layout="vertical" 
+                        align="right" 
+                        verticalAlign="middle"
+                        formatter={(value) => {
+                          const item = chartDataPorcentajeDistribucion.find(d => d.nombre === value);
+                          return `${value} (${item?.porcentaje}%)`;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -469,37 +473,41 @@ export default function DistribucionesPage() {
               <CardDescription>Distribucion por estatus de pago</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartDataEstatus}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {chartDataEstatus.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Legend 
-                      layout="vertical" 
-                      align="right" 
-                      verticalAlign="middle"
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="h-[300px] flex items-center justify-center">
+                {chartDataEstatus.length === 0 ? (
+                  <div className="text-muted-foreground">No hay distribuciones registradas</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartDataEstatus}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {chartDataEstatus.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Legend 
+                        layout="vertical" 
+                        align="right" 
+                        verticalAlign="middle"
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -511,36 +519,56 @@ export default function DistribucionesPage() {
               <CardDescription>Desglose de montos pagados y pendientes</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {chartDataPorInversionista.map((inv, index) => {
-                  const porcentajePagado = inv.total > 0 ? (inv.pagado / inv.total) * 100 : 0;
-                  return (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{inv.nombre}</span>
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="text-emerald-600">Pagado: {formatCurrency(inv.pagado)}</span>
-                          <span className="text-amber-600">Pendiente: {formatCurrency(inv.pendiente)}</span>
-                          <span className="text-muted-foreground">Total: {formatCurrency(inv.total)}</span>
+              {chartDataPorInversionista.length === 0 ? (
+                <div className="flex items-center justify-center h-32 text-muted-foreground">
+                  No hay distribuciones registradas
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {chartDataPorInversionista.map((inv, index) => {
+                    const porcentajePagado = inv.total > 0 ? (inv.pagado / inv.total) * 100 : 0;
+                    return (
+                      <div key={index} className="space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <span className="font-semibold text-base">{inv.nombre}</span>
+                          <div className="flex flex-wrap items-center gap-3 text-sm">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                              <span>Pagado: <span className="font-medium text-emerald-600">{formatCurrency(inv.pagado)}</span></span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-3 h-3 rounded-full bg-amber-500" />
+                              <span>Pendiente: <span className="font-medium text-amber-600">{formatCurrency(inv.pendiente)}</span></span>
+                            </div>
+                            <span className="text-muted-foreground">Total: {formatCurrency(inv.total)}</span>
+                          </div>
+                        </div>
+                        <div className="relative h-6 w-full rounded-full bg-muted overflow-hidden">
+                          {porcentajePagado > 0 && (
+                            <div 
+                              className="absolute inset-y-0 left-0 bg-emerald-500 transition-all"
+                              style={{ width: `${porcentajePagado}%`, borderRadius: porcentajePagado === 100 ? '9999px' : '9999px 0 0 9999px' }}
+                            />
+                          )}
+                          {porcentajePagado < 100 && (
+                            <div 
+                              className="absolute inset-y-0 bg-amber-500 transition-all"
+                              style={{ 
+                                left: `${porcentajePagado}%`, 
+                                width: `${100 - porcentajePagado}%`,
+                                borderRadius: porcentajePagado === 0 ? '9999px' : '0 9999px 9999px 0'
+                              }}
+                            />
+                          )}
+                        </div>
+                        <div className="text-center text-sm font-medium text-muted-foreground">
+                          {porcentajePagado.toFixed(0)}% pagado
                         </div>
                       </div>
-                      <div className="relative h-4 w-full rounded-full bg-muted overflow-hidden">
-                        <div 
-                          className="absolute inset-y-0 left-0 bg-emerald-500 rounded-l-full transition-all"
-                          style={{ width: `${porcentajePagado}%` }}
-                        />
-                        <div 
-                          className="absolute inset-y-0 bg-amber-500 rounded-r-full transition-all"
-                          style={{ left: `${porcentajePagado}%`, width: `${100 - porcentajePagado}%` }}
-                        />
-                        <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white drop-shadow">
-                          {porcentajePagado.toFixed(0)}% pagado
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
