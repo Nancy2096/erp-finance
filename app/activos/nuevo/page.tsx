@@ -810,23 +810,6 @@ export default function NuevoActivoPage() {
                 })}
               </CardContent>
             </Card>
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeDocumento(doc.label)}
-                          >
-                            Cancelar
-                          </Button>
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </form>

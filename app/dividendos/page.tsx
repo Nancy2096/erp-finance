@@ -45,7 +45,8 @@ import {
   AlertCircle,
   Pencil,
 } from 'lucide-react';
-import { dividendos, activos } from '@/lib/mock-data';
+import { activos } from '@/lib/mock-data';
+import { useDividendos, type Dividendo } from '@/lib/dividendos-context';
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -66,11 +67,12 @@ import {
 } from 'recharts';
 
 export default function DividendosPage() {
+  const { dividendos: localDividendos, addDividendo, updateDividendo, getStats, isLoaded } = useDividendos();
   const [searchTerm, setSearchTerm] = useState('');
   const [estatusFilter, setEstatusFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedDividendo, setSelectedDividendo] = useState<typeof dividendos[0] | null>(null);
+  const [selectedDividendo, setSelectedDividendo] = useState<Dividendo | null>(null);
   
   // Estados para edicion
   const [editMontoEsperado, setEditMontoEsperado] = useState('');
@@ -87,9 +89,6 @@ export default function DividendosPage() {
   const [newMontoRecibido, setNewMontoRecibido] = useState('');
   const [newEstatus, setNewEstatus] = useState('');
   const [newComentarios, setNewComentarios] = useState('');
-  
-  // Estado local para dividendos (para poder agregar nuevos)
-  const [localDividendos, setLocalDividendos] = useState(dividendos);
   
   const resetNewDividendoForm = () => {
     setNewActivoId('');
@@ -108,8 +107,7 @@ export default function DividendosPage() {
     }
     
     const activoSeleccionado = activos.find(a => a.id === newActivoId);
-    const nuevoDividendo = {
-      id: `div-${Date.now()}`,
+    addDividendo({
       activoId: newActivoId,
       activoNombre: activoSeleccionado?.nombre || '',
       periodo: newPeriodo,
@@ -118,9 +116,9 @@ export default function DividendosPage() {
       montoRecibido: parseFloat(newMontoRecibido) || 0,
       estatus: newEstatus as 'recibido' | 'pendiente' | 'parcial' | 'no_recibido',
       comentarios: newComentarios,
-    };
+      responsable: '',
+    });
     
-    setLocalDividendos([nuevoDividendo, ...localDividendos]);
     resetNewDividendoForm();
     setDialogOpen(false);
   };
@@ -136,12 +134,11 @@ export default function DividendosPage() {
   };
   
   const handleSaveEdit = () => {
-    // Aqui iria la logica para guardar los cambios
-    console.log('Guardando cambios:', {
-      id: selectedDividendo?.id,
+    if (!selectedDividendo) return;
+    updateDividendo(selectedDividendo.id, {
       montoEsperado: parseFloat(editMontoEsperado),
       montoRecibido: parseFloat(editMontoRecibido),
-      estatus: editEstatus,
+      estatus: editEstatus as 'recibido' | 'pendiente' | 'parcial' | 'no_recibido',
       fechaRecepcion: editFechaRecepcion,
       comentarios: editComentarios,
     });
@@ -160,13 +157,8 @@ export default function DividendosPage() {
   }, [searchTerm, estatusFilter, localDividendos]);
 
   const stats = useMemo(() => {
-    const totalEsperado = localDividendos.reduce((sum, d) => sum + d.montoEsperado, 0);
-    const totalRecibido = localDividendos.reduce((sum, d) => sum + d.montoRecibido, 0);
-    const diferencia = totalRecibido - totalEsperado;
-    const cumplimiento = totalEsperado > 0 ? (totalRecibido / totalEsperado) * 100 : 0;
-    const pendientes = localDividendos.filter((d) => d.estatus === 'pendiente').length;
-    return { totalEsperado, totalRecibido, diferencia, cumplimiento, pendientes };
-  }, [localDividendos]);
+    return getStats();
+  }, [localDividendos, getStats]);
 
   const chartData = useMemo(() => {
     const grouped = localDividendos.reduce((acc, div) => {
@@ -196,6 +188,11 @@ export default function DividendosPage() {
 
   return (
     <DashboardLayout>
+      {!isLoaded ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Cargando dividendos...</div>
+        </div>
+      ) : (
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -589,6 +586,7 @@ export default function DividendosPage() {
           </DialogContent>
         </Dialog>
       </div>
+      )}
     </DashboardLayout>
   );
 }

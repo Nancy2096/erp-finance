@@ -7,6 +7,7 @@ import { UsersProvider } from '@/lib/users-context'
 import { ActivosProvider } from '@/lib/activos-context'
 import { InversionistasProvider } from '@/lib/inversionistas-context'
 import { BancosProvider } from '@/lib/bancos-context'
+import { DividendosProvider } from '@/lib/dividendos-context'
 import { AuthProvider } from '@/lib/auth-context'
 import { ErrorSuppressor } from '@/components/error-suppressor'
 import './globals.css'
@@ -73,9 +74,11 @@ export default function RootLayout({
               <ActivosProvider>
                 <InversionistasProvider>
                   <BancosProvider>
-                    <AuthProvider>
-                      {children}
-                    </AuthProvider>
+                    <DividendosProvider>
+                      <AuthProvider>
+                        {children}
+                      </AuthProvider>
+                    </DividendosProvider>
                   </BancosProvider>
                 </InversionistasProvider>
               </ActivosProvider>

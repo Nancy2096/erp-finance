@@ -54,8 +54,9 @@ import {
   Landmark,
   FolderOpen,
 } from 'lucide-react';
-import { pagos, dividendos, movimientos } from '@/lib/mock-data';
+import { pagos, movimientos } from '@/lib/mock-data';
 import { useActivos } from '@/lib/activos-context';
+import { useDividendos } from '@/lib/dividendos-context';
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -89,9 +90,11 @@ interface PageProps {
 export default function DetalleActivoPage({ params }: PageProps) {
   const { id } = use(params);
   const { getActivoById, activos } = useActivos();
+  const { getDividendosByActivo, getTotalDividendosRecibidosByActivo } = useDividendos();
   const activo = getActivoById(id) || activos[0];
   const pagosActivo = pagos.filter((p) => p.activoId === activo?.id);
-  const dividendosActivo = dividendos.filter((d) => d.activoId === activo.id);
+  const dividendosActivo = getDividendosByActivo(activo.id);
+  const totalDividendosRecibidos = getTotalDividendosRecibidosByActivo(activo.id);
   const movimientosActivo = movimientos.filter((m) => m.activoId === activo.id);
 
   const pieData = [
@@ -540,7 +543,7 @@ export default function DetalleActivoPage({ params }: PageProps) {
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Dividendos Acumulados</p>
                     <p className="text-lg font-bold text-emerald-600">
-                      {formatCurrency(activo.dividendosAcumulados)}
+                      {formatCurrency(totalDividendosRecibidos || activo.dividendosAcumulados)}
                     </p>
                   </div>
                   <div className="space-y-1">
