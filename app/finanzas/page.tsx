@@ -28,11 +28,13 @@ import {
   Calendar,
   X,
   Building2,
-  ArrowUpDown
+  ArrowUpDown,
+  Pencil,
+  Trash2
 } from "lucide-react"
 import { mockFinancialRecords, mockAssets } from "@/lib/mock-data"
 import { formatCurrency, formatDate } from "@/lib/format"
-import { useBancos } from "@/lib/bancos-context"
+import { useBancos, type CuentaBancaria } from "@/lib/bancos-context"
 import {
   AreaChart,
   Area,
@@ -67,12 +69,96 @@ const expenseCategories = [
 ]
 
 export default function FinanzasPage() {
-  const { cuentas: cuentasBancarias, movimientos: movimientosBancarios, getSaldoTotal } = useBancos()
+  const { cuentas: cuentasBancarias, movimientos: movimientosBancarios, getSaldoTotal, addCuenta, updateCuenta, deleteCuenta } = useBancos()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("all")
   const [isNewRecordOpen, setIsNewRecordOpen] = useState(false)
   const [fechaInicio, setFechaInicio] = useState("")
   const [fechaFin, setFechaFin] = useState("")
+  
+  // Estados para gestión de cuentas bancarias
+  const [isNewCuentaOpen, setIsNewCuentaOpen] = useState(false)
+  const [isEditCuentaOpen, setIsEditCuentaOpen] = useState(false)
+  const [selectedCuenta, setSelectedCuenta] = useState<CuentaBancaria | null>(null)
+  const [cuentaBanco, setCuentaBanco] = useState("")
+  const [cuentaTipo, setCuentaTipo] = useState("")
+  const [cuentaNumero, setCuentaNumero] = useState("")
+  const [cuentaClabe, setCuentaClabe] = useState("")
+  const [cuentaSaldo, setCuentaSaldo] = useState("")
+  const [cuentaMoneda, setCuentaMoneda] = useState("MXN")
+  const [cuentaColor, setCuentaColor] = useState("#3b82f6")
+
+  const coloresDisponibles = [
+    { nombre: "Azul", valor: "#3b82f6" },
+    { nombre: "Azul Oscuro", valor: "#0d47a1" },
+    { nombre: "Rojo", valor: "#c62828" },
+    { nombre: "Verde", valor: "#16a34a" },
+    { nombre: "Morado", valor: "#7c3aed" },
+    { nombre: "Naranja", valor: "#ea580c" },
+    { nombre: "Rosa", valor: "#db2777" },
+  ]
+
+  const resetCuentaForm = () => {
+    setCuentaBanco("")
+    setCuentaTipo("")
+    setCuentaNumero("")
+    setCuentaClabe("")
+    setCuentaSaldo("")
+    setCuentaMoneda("MXN")
+    setCuentaColor("#3b82f6")
+    setSelectedCuenta(null)
+  }
+
+  const handleCreateCuenta = () => {
+    if (!cuentaBanco || !cuentaTipo || !cuentaNumero) {
+      alert("Por favor complete los campos requeridos")
+      return
+    }
+    addCuenta({
+      banco: cuentaBanco,
+      tipoCuenta: cuentaTipo,
+      numeroCuenta: cuentaNumero,
+      clabe: cuentaClabe,
+      saldo: parseFloat(cuentaSaldo) || 0,
+      moneda: cuentaMoneda,
+      color: cuentaColor,
+    })
+    resetCuentaForm()
+    setIsNewCuentaOpen(false)
+  }
+
+  const handleEditCuenta = (cuenta: CuentaBancaria) => {
+    setSelectedCuenta(cuenta)
+    setCuentaBanco(cuenta.banco)
+    setCuentaTipo(cuenta.tipoCuenta)
+    setCuentaNumero(cuenta.numeroCuenta)
+    setCuentaClabe(cuenta.clabe)
+    setCuentaSaldo(cuenta.saldo.toString())
+    setCuentaMoneda(cuenta.moneda)
+    setCuentaColor(cuenta.color)
+    setIsEditCuentaOpen(true)
+  }
+
+  const handleUpdateCuenta = () => {
+    if (!selectedCuenta || !cuentaBanco || !cuentaTipo) return
+    updateCuenta(selectedCuenta.id, {
+      banco: cuentaBanco,
+      tipoCuenta: cuentaTipo,
+      numeroCuenta: cuentaNumero,
+      clabe: cuentaClabe,
+      saldo: parseFloat(cuentaSaldo) || 0,
+      moneda: cuentaMoneda,
+      color: cuentaColor,
+    })
+    resetCuentaForm()
+    setIsEditCuentaOpen(false)
+  }
+
+  const handleDeleteCuenta = (cuenta: CuentaBancaria) => {
+    if (confirm(`¿Estás seguro de eliminar la cuenta ${cuenta.banco} - ${cuenta.numeroCuenta}? Esto también eliminará todos los movimientos asociados.`)) {
+      deleteCuenta(cuenta.id)
+    }
+  }
   
   // Funcion para filtrar por rango de fechas
   const filtrarPorFechas = <T extends { date: string }>(records: T[]): T[] => {
@@ -494,33 +580,122 @@ export default function FinanzasPage() {
               {/* Lista de Cuentas */}
               <Card className="lg:col-span-1">
                 <CardHeader>
-                  <CardTitle className="text-base">Cuentas Bancarias</CardTitle>
-                  <CardDescription>Detalle de cada cuenta</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {cuentasBancarias.map((cuenta) => (
-                    <div 
-                      key={cuenta.id} 
-                      className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-2 h-8 rounded-full" 
-                            style={{ backgroundColor: cuenta.color }}
-                          />
-                          <div>
-                            <p className="font-semibold">{cuenta.banco}</p>
-                            <p className="text-xs text-muted-foreground">{cuenta.tipoCuenta}</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">Cuentas Bancarias</CardTitle>
+                      <CardDescription>Detalle de cada cuenta</CardDescription>
+                    </div>
+                    <Dialog open={isNewCuentaOpen} onOpenChange={setIsNewCuentaOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" onClick={() => resetCuentaForm()}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Nueva
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Nueva Cuenta Bancaria</DialogTitle>
+                          <DialogDescription>Agrega una nueva cuenta bancaria al sistema</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="banco">Banco *</Label>
+                            <Input id="banco" value={cuentaBanco} onChange={(e) => setCuentaBanco(e.target.value)} placeholder="Ej: BBVA, Banorte, Santander" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="tipoCuenta">Tipo de Cuenta *</Label>
+                            <Input id="tipoCuenta" value={cuentaTipo} onChange={(e) => setCuentaTipo(e.target.value)} placeholder="Ej: Cuenta Corriente, Inversión" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                              <Label htmlFor="numeroCuenta">Numero de Cuenta *</Label>
+                              <Input id="numeroCuenta" value={cuentaNumero} onChange={(e) => setCuentaNumero(e.target.value)} placeholder="****1234" />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor="clabe">CLABE</Label>
+                              <Input id="clabe" value={cuentaClabe} onChange={(e) => setCuentaClabe(e.target.value)} placeholder="18 dígitos" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                              <Label htmlFor="saldo">Saldo Inicial</Label>
+                              <Input id="saldo" type="number" value={cuentaSaldo} onChange={(e) => setCuentaSaldo(e.target.value)} placeholder="0.00" />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor="moneda">Moneda</Label>
+                              <Select value={cuentaMoneda} onValueChange={setCuentaMoneda}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="MXN">MXN</SelectItem>
+                                  <SelectItem value="USD">USD</SelectItem>
+                                  <SelectItem value="EUR">EUR</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Color identificador</Label>
+                            <div className="flex gap-2 flex-wrap">
+                              {coloresDisponibles.map((c) => (
+                                <button
+                                  key={c.valor}
+                                  type="button"
+                                  className={`w-8 h-8 rounded-full border-2 transition-all ${cuentaColor === c.valor ? 'border-foreground scale-110' : 'border-transparent'}`}
+                                  style={{ backgroundColor: c.valor }}
+                                  onClick={() => setCuentaColor(c.valor)}
+                                  title={c.nombre}
+                                />
+                              ))}
+                            </div>
                           </div>
                         </div>
-                        <Badge variant="outline">{cuenta.moneda}</Badge>
-                      </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Cuenta:</span>
-                          <span className="font-mono">{cuenta.numeroCuenta}</span>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsNewCuentaOpen(false)}>Cancelar</Button>
+                          <Button onClick={handleCreateCuenta}>Crear Cuenta</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {cuentasBancarias.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No hay cuentas bancarias registradas
+                    </div>
+                  ) : (
+                    cuentasBancarias.map((cuenta) => (
+                      <div 
+                        key={cuenta.id} 
+                        className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-2 h-8 rounded-full" 
+                              style={{ backgroundColor: cuenta.color }}
+                            />
+                            <div>
+                              <p className="font-semibold">{cuenta.banco}</p>
+                              <p className="text-xs text-muted-foreground">{cuenta.tipoCuenta}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Badge variant="outline">{cuenta.moneda}</Badge>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditCuenta(cuenta)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteCuenta(cuenta)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Cuenta:</span>
+                            <span className="font-mono">{cuenta.numeroCuenta}</span>
+                          </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">CLABE:</span>
                           <span className="font-mono text-xs">{cuenta.clabe.slice(0, 6)}...{cuenta.clabe.slice(-4)}</span>
@@ -530,10 +705,79 @@ export default function FinanzasPage() {
                           <span className="font-bold text-primary">{formatCurrency(cuenta.saldo)}</span>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                      </div>
+                    ))
+                  )}
                 </CardContent>
               </Card>
+
+              {/* Diálogo de Editar Cuenta */}
+              <Dialog open={isEditCuentaOpen} onOpenChange={setIsEditCuentaOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Editar Cuenta Bancaria</DialogTitle>
+                    <DialogDescription>Modifica los datos de la cuenta {selectedCuenta?.banco}</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-banco">Banco *</Label>
+                      <Input id="edit-banco" value={cuentaBanco} onChange={(e) => setCuentaBanco(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-tipoCuenta">Tipo de Cuenta *</Label>
+                      <Input id="edit-tipoCuenta" value={cuentaTipo} onChange={(e) => setCuentaTipo(e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-numeroCuenta">Numero de Cuenta *</Label>
+                        <Input id="edit-numeroCuenta" value={cuentaNumero} onChange={(e) => setCuentaNumero(e.target.value)} />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-clabe">CLABE</Label>
+                        <Input id="edit-clabe" value={cuentaClabe} onChange={(e) => setCuentaClabe(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-saldo">Saldo</Label>
+                        <Input id="edit-saldo" type="number" value={cuentaSaldo} onChange={(e) => setCuentaSaldo(e.target.value)} />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-moneda">Moneda</Label>
+                        <Select value={cuentaMoneda} onValueChange={setCuentaMoneda}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MXN">MXN</SelectItem>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Color identificador</Label>
+                      <div className="flex gap-2 flex-wrap">
+                        {coloresDisponibles.map((c) => (
+                          <button
+                            key={c.valor}
+                            type="button"
+                            className={`w-8 h-8 rounded-full border-2 transition-all ${cuentaColor === c.valor ? 'border-foreground scale-110' : 'border-transparent'}`}
+                            style={{ backgroundColor: c.valor }}
+                            onClick={() => setCuentaColor(c.valor)}
+                            title={c.nombre}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => { setIsEditCuentaOpen(false); resetCuentaForm(); }}>Cancelar</Button>
+                    <Button onClick={handleUpdateCuenta}>Guardar Cambios</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Movimientos Recientes */}
               <Card className="lg:col-span-2">

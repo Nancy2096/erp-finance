@@ -158,8 +158,11 @@ interface BancosContextType {
   cuentas: CuentaBancaria[]
   movimientos: MovimientoBancario[]
   isLoaded: boolean
-  // Cuentas
+  // Cuentas CRUD
   getCuentaById: (id: string) => CuentaBancaria | undefined
+  addCuenta: (cuenta: Omit<CuentaBancaria, 'id'>) => void
+  updateCuenta: (id: string, data: Partial<CuentaBancaria>) => void
+  deleteCuenta: (id: string) => void
   updateSaldoCuenta: (id: string, nuevoSaldo: number) => void
   // Movimientos
   addMovimiento: (movimiento: Omit<MovimientoBancario, 'id' | 'saldoResultante'>) => void
@@ -237,6 +240,25 @@ export function BancosProvider({ children }: { children: ReactNode }) {
   }, [movimientos, isLoaded])
 
   const getCuentaById = (id: string) => cuentas.find(c => c.id === id)
+
+  const addCuenta = (cuentaData: Omit<CuentaBancaria, 'id'>) => {
+    const nuevaCuenta: CuentaBancaria = {
+      ...cuentaData,
+      id: `cuenta-${Date.now()}`,
+    }
+    setCuentas(prev => [...prev, nuevaCuenta])
+  }
+
+  const updateCuenta = (id: string, data: Partial<CuentaBancaria>) => {
+    setCuentas(prev => prev.map(c => c.id === id ? { ...c, ...data } : c))
+  }
+
+  const deleteCuenta = (id: string) => {
+    // Eliminar todos los movimientos asociados a esta cuenta
+    setMovimientos(prev => prev.filter(m => m.cuentaId !== id))
+    // Eliminar la cuenta
+    setCuentas(prev => prev.filter(c => c.id !== id))
+  }
 
   const updateSaldoCuenta = (id: string, nuevoSaldo: number) => {
     setCuentas(prev => prev.map(c => c.id === id ? { ...c, saldo: nuevoSaldo } : c))
@@ -318,6 +340,9 @@ export function BancosProvider({ children }: { children: ReactNode }) {
       movimientos,
       isLoaded,
       getCuentaById,
+      addCuenta,
+      updateCuenta,
+      deleteCuenta,
       updateSaldoCuenta,
       addMovimiento,
       deleteMovimiento,
