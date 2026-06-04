@@ -44,6 +44,7 @@ import {
   LayoutGrid,
   List,
   Building2,
+  Trash2,
 } from 'lucide-react';
 import { useActivos } from '@/lib/activos-context';
 import {
@@ -61,7 +62,14 @@ import type { EstadoActivo, TipoActivo } from '@/lib/types';
 type ViewMode = 'table' | 'cards';
 
 export default function ActivosPage() {
-  const { activos } = useActivos();
+  const { activos, deleteActivo } = useActivos();
+  const [activoToDelete, setActivoToDelete] = useState<string | null>(null);
+
+  const handleDeleteActivo = (id: string, nombre: string) => {
+    if (confirm(`¿Estás seguro de que deseas eliminar el activo "${nombre}"? Esta acción no se puede deshacer.`)) {
+      deleteActivo(id);
+    }
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('all');
   const [tipoFilter, setTipoFilter] = useState<string>('all');
@@ -332,6 +340,14 @@ export default function ActivosPage() {
                               <History className="mr-2 h-4 w-4" />
                               Ver historial
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => handleDeleteActivo(activo.id, activo.nombre)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -401,6 +417,14 @@ export default function ActivosPage() {
                         <Edit className="mr-2 h-3 w-3" />
                         Editar
                       </Link>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeleteActivo(activo.id, activo.nombre)}
+                    >
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
                 </CardContent>
