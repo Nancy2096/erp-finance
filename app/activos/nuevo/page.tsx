@@ -501,21 +501,20 @@ export default function NuevoActivoPage() {
 
           {/* Documentos Tab */}
           <TabsContent value="documentos" className="space-y-6">
+            {/* Documentos para Firma de Contrato */}
             <Card>
               <CardHeader>
-                <CardTitle>Documentos del Activo</CardTitle>
-                <CardDescription>Sube archivos o agrega links de Google Drive para cada documento</CardDescription>
+                <CardTitle>Documentos para Firma de Contrato</CardTitle>
+                <CardDescription>Documentacion requerida para formalizar la compra del activo</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {[
-                  { label: 'Contrato', required: true },
-                  { label: 'Escrituras', required: true },
-                  { label: 'Facturas', required: false },
-                  { label: 'Comprobantes de Pago', required: false },
-                  { label: 'Identificaciones', required: false },
-                  { label: 'Estados de Cuenta', required: false },
-                  { label: 'Fotografías', required: false },
-                  { label: 'Documentos Legales', required: false },
+                  { label: 'Contrato de Compraventa', required: true },
+                  { label: 'Escrituras del Inmueble', required: true },
+                  { label: 'Avaluo Comercial', required: false },
+                  { label: 'Certificado de Libertad de Gravamen', required: false },
+                  { label: 'Boleta Predial', required: false },
+                  { label: 'Recibos de Servicios', required: false },
                 ].map((doc) => {
                   const docState = documentos[doc.label];
                   return (
@@ -587,6 +586,230 @@ export default function NuevoActivoPage() {
                                 e.preventDefault();
                                 handleLinkChange(doc.label, (e.target as HTMLInputElement).value);
                               }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeDocumento(doc.label)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Documentos para Fideicomiso/Empresa */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Documentos para Fideicomiso / Empresa</CardTitle>
+                <CardDescription>Documentacion requerida para formar parte de un fideicomiso o constituir una empresa</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {[
+                  { label: 'Acta Constitutiva', required: false },
+                  { label: 'Poder Notarial', required: false },
+                  { label: 'Contrato de Fideicomiso', required: false },
+                  { label: 'Reglamento del Fideicomiso', required: false },
+                  { label: 'Cedula Fiscal (RFC)', required: false },
+                  { label: 'Comprobante de Domicilio Fiscal', required: false },
+                  { label: 'Identificacion del Representante Legal', required: false },
+                  { label: 'Carta de Poderes', required: false },
+                  { label: 'Estados Financieros', required: false },
+                ].map((doc) => {
+                  const docState = documentos[doc.label];
+                  return (
+                    <div key={doc.label} className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {doc.label}
+                            {doc.required && <span className="text-destructive ml-1">*</span>}
+                          </p>
+                          {!docState?.tipo && (
+                            <p className="text-sm text-muted-foreground">Sin archivo ni link</p>
+                          )}
+                          {docState?.tipo === 'archivo' && docState.archivo && (
+                            <p className="text-sm text-emerald-600">Archivo: {docState.archivo.name}</p>
+                          )}
+                          {docState?.tipo === 'link' && docState.link && (
+                            <a href={docState.link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                              Ver en Google Drive <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                        {docState?.tipo && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeDocumento(doc.label)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {!docState?.tipo ? (
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.onchange = (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (file) handleFileChange(doc.label, file);
+                              };
+                              input.click();
+                            }}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Subir Archivo
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleDocumentoTipoChange(doc.label, 'link')}
+                          >
+                            <Link2 className="mr-2 h-4 w-4" />
+                            Agregar Link
+                          </Button>
+                        </div>
+                      ) : docState.tipo === 'link' && !docState.link ? (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="https://drive.google.com/..."
+                            className="flex-1"
+                            onBlur={(e) => handleLinkChange(doc.label, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleLinkChange(doc.label, (e.target as HTMLInputElement).value);
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeDocumento(doc.label)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Otros Documentos */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Otros Documentos</CardTitle>
+                <CardDescription>Documentos adicionales del activo</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {[
+                  { label: 'Facturas', required: false },
+                  { label: 'Comprobantes de Pago', required: false },
+                  { label: 'Estados de Cuenta', required: false },
+                  { label: 'Fotografias', required: false },
+                ].map((doc) => {
+                  const docState = documentos[doc.label];
+                  return (
+                    <div key={doc.label} className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {doc.label}
+                            {doc.required && <span className="text-destructive ml-1">*</span>}
+                          </p>
+                          {!docState?.tipo && (
+                            <p className="text-sm text-muted-foreground">Sin archivo ni link</p>
+                          )}
+                          {docState?.tipo === 'archivo' && docState.archivo && (
+                            <p className="text-sm text-emerald-600">Archivo: {docState.archivo.name}</p>
+                          )}
+                          {docState?.tipo === 'link' && docState.link && (
+                            <a href={docState.link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                              Ver en Google Drive <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                        {docState?.tipo && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeDocumento(doc.label)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {!docState?.tipo ? (
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.onchange = (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (file) handleFileChange(doc.label, file);
+                              };
+                              input.click();
+                            }}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Subir Archivo
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleDocumentoTipoChange(doc.label, 'link')}
+                          >
+                            <Link2 className="mr-2 h-4 w-4" />
+                            Agregar Link
+                          </Button>
+                        </div>
+                      ) : docState.tipo === 'link' && !docState.link ? (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="https://drive.google.com/..."
+                            className="flex-1"
+                            onBlur={(e) => handleLinkChange(doc.label, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleLinkChange(doc.label, (e.target as HTMLInputElement).value);
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeDocumento(doc.label)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
                             }}
                           />
                           <Button

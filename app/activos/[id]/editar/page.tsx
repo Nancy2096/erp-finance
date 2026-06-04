@@ -99,6 +99,19 @@ export default function EditarActivoPage({ params }: PageProps) {
   const [poderNotarialUrl, setPoderNotarialUrl] = useState('');
   const [comprobanteDomicilioUrl, setComprobanteDomicilioUrl] = useState('');
   const [identificacionRepresentanteUrl, setIdentificacionRepresentanteUrl] = useState('');
+  // Documentos para Contrato
+  const [contratoCompraventaUrl, setContratoCompraventaUrl] = useState('');
+  const [escriturasUrl, setEscriturasUrl] = useState('');
+  const [avaluoUrl, setAvaluoUrl] = useState('');
+  const [certificadoLibertadGravamenUrl, setCertificadoLibertadGravamenUrl] = useState('');
+  const [boletaPredialUrl, setBoletaPredialUrl] = useState('');
+  const [recibosServiciosUrl, setRecibosServiciosUrl] = useState('');
+  // Documentos para Fideicomiso/Empresa
+  const [contratoFideicomisoUrl, setContratoFideicomisoUrl] = useState('');
+  const [reglamentoFideicomisoUrl, setReglamentoFideicomisoUrl] = useState('');
+  const [cedulaFiscalUrl, setCedulaFiscalUrl] = useState('');
+  const [estadosFinancierosUrl, setEstadosFinancierosUrl] = useState('');
+  const [cartaPoderesUrl, setCartaPoderesUrl] = useState('');
   const [empresaNotas, setEmpresaNotas] = useState('');
   
   // Estados para plan de compra
@@ -943,51 +956,6 @@ export default function EditarActivoPage({ params }: PageProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle>Documentos Legales</CardTitle>
-                <CardDescription>Documentacion legal de la empresa (URLs de archivos)</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-6 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="actaConstitutiva">Acta Constitutiva (URL)</Label>
-                  <Input
-                    id="actaConstitutiva"
-                    value={actaConstitutivaUrl}
-                    onChange={(e) => setActaConstitutivaUrl(e.target.value)}
-                    placeholder="URL del documento PDF"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="poderNotarial">Poder Notarial (URL)</Label>
-                  <Input
-                    id="poderNotarial"
-                    value={poderNotarialUrl}
-                    onChange={(e) => setPoderNotarialUrl(e.target.value)}
-                    placeholder="URL del documento PDF"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="comprobanteDomicilio">Comprobante de Domicilio (URL)</Label>
-                  <Input
-                    id="comprobanteDomicilio"
-                    value={comprobanteDomicilioUrl}
-                    onChange={(e) => setComprobanteDomicilioUrl(e.target.value)}
-                    placeholder="URL del documento PDF"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="identificacionRepresentante">ID Representante Legal (URL)</Label>
-                  <Input
-                    id="identificacionRepresentante"
-                    value={identificacionRepresentanteUrl}
-                    onChange={(e) => setIdentificacionRepresentanteUrl(e.target.value)}
-                    placeholder="URL del documento PDF"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
                 <CardTitle>Notas Adicionales</CardTitle>
               </CardHeader>
               <CardContent>
@@ -1595,11 +1563,167 @@ export default function EditarActivoPage({ params }: PageProps) {
 
           {/* Documentos Tab */}
           <TabsContent value="documentos" className="space-y-6">
+            {/* Documentos para Firma de Contrato */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Documentos para Firma de Contrato</CardTitle>
+                <CardDescription>Documentacion requerida para formalizar la compra del activo</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-6 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="contratoCompraventa">Contrato de Compraventa</Label>
+                  <Input
+                    id="contratoCompraventa"
+                    value={contratoCompraventaUrl}
+                    onChange={(e) => setContratoCompraventaUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="escrituras">Escrituras del Inmueble</Label>
+                  <Input
+                    id="escrituras"
+                    value={escriturasUrl}
+                    onChange={(e) => setEscriturasUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="avaluo">Avaluo Comercial</Label>
+                  <Input
+                    id="avaluo"
+                    value={avaluoUrl}
+                    onChange={(e) => setAvaluoUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="certificadoLibertad">Certificado de Libertad de Gravamen</Label>
+                  <Input
+                    id="certificadoLibertad"
+                    value={certificadoLibertadGravamenUrl}
+                    onChange={(e) => setCertificadoLibertadGravamenUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="boletaPredial">Boleta Predial</Label>
+                  <Input
+                    id="boletaPredial"
+                    value={boletaPredialUrl}
+                    onChange={(e) => setBoletaPredialUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="recibosServicios">Recibos de Servicios (Agua, Luz, Gas)</Label>
+                  <Input
+                    id="recibosServicios"
+                    value={recibosServiciosUrl}
+                    onChange={(e) => setRecibosServiciosUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Documentos para Fideicomiso/Empresa */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Documentos para Fideicomiso / Empresa</CardTitle>
+                <CardDescription>Documentacion requerida para formar parte de un fideicomiso o constituir una empresa</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-6 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="actaConstitutiva">Acta Constitutiva</Label>
+                  <Input
+                    id="actaConstitutiva"
+                    value={actaConstitutivaUrl}
+                    onChange={(e) => setActaConstitutivaUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="poderNotarial">Poder Notarial</Label>
+                  <Input
+                    id="poderNotarial"
+                    value={poderNotarialUrl}
+                    onChange={(e) => setPoderNotarialUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contratoFideicomiso">Contrato de Fideicomiso</Label>
+                  <Input
+                    id="contratoFideicomiso"
+                    value={contratoFideicomisoUrl}
+                    onChange={(e) => setContratoFideicomisoUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reglamentoFideicomiso">Reglamento del Fideicomiso</Label>
+                  <Input
+                    id="reglamentoFideicomiso"
+                    value={reglamentoFideicomisoUrl}
+                    onChange={(e) => setReglamentoFideicomisoUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cedulaFiscal">Cedula Fiscal (RFC)</Label>
+                  <Input
+                    id="cedulaFiscal"
+                    value={cedulaFiscalUrl}
+                    onChange={(e) => setCedulaFiscalUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="comprobanteDomicilio">Comprobante de Domicilio Fiscal</Label>
+                  <Input
+                    id="comprobanteDomicilio"
+                    value={comprobanteDomicilioUrl}
+                    onChange={(e) => setComprobanteDomicilioUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="identificacionRepresentante">Identificacion del Representante Legal</Label>
+                  <Input
+                    id="identificacionRepresentante"
+                    value={identificacionRepresentanteUrl}
+                    onChange={(e) => setIdentificacionRepresentanteUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cartaPoderes">Carta de Poderes</Label>
+                  <Input
+                    id="cartaPoderes"
+                    value={cartaPoderesUrl}
+                    onChange={(e) => setCartaPoderesUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="estadosFinancieros">Estados Financieros</Label>
+                  <Input
+                    id="estadosFinancieros"
+                    value={estadosFinancierosUrl}
+                    onChange={(e) => setEstadosFinancierosUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Otros Documentos */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Documentos del Activo</CardTitle>
-                  <CardDescription>Vincula documentos de Google Drive a este activo</CardDescription>
+                  <CardTitle>Otros Documentos</CardTitle>
+                  <CardDescription>Documentos adicionales vinculados a este activo</CardDescription>
                 </div>
                 <Button type="button" variant="outline" onClick={addDocumento}>
                   <Plus className="mr-2 h-4 w-4" />
