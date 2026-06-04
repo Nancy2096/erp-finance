@@ -147,7 +147,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // Salt rounds para bcrypt
 const SALT_ROUNDS = 10
-const STORAGE_KEY_USERS = "1d10-secure-users-v3"
+const STORAGE_KEY_USERS = "1d10-secure-users-v4"
 const STORAGE_KEY_SESSION = "1d10-current-session"
 
 // Contraseñas específicas por email
@@ -160,6 +160,10 @@ const userPasswords: Record<string, string> = {
 
 // Inicializar usuarios con contraseñas hasheadas
 const initializeUsers = async (): Promise<StoredUser[]> => {
+  // Limpiar versiones anteriores de usuarios
+  const oldKeys = ["1d10-secure-users-v1", "1d10-secure-users-v2", "1d10-secure-users-v3"]
+  oldKeys.forEach(key => localStorage.removeItem(key))
+  
   const saved = localStorage.getItem(STORAGE_KEY_USERS)
   if (saved) {
     try {
