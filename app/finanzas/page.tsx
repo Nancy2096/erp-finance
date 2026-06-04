@@ -26,7 +26,9 @@ import {
   PiggyBank,
   Receipt,
   Calendar,
-  X
+  X,
+  Building2,
+  ArrowUpDown
 } from "lucide-react"
 import { mockFinancialRecords, mockAssets } from "@/lib/mock-data"
 import { formatCurrency, formatDate } from "@/lib/format"
@@ -61,6 +63,124 @@ const expenseCategories = [
   { name: "Impuestos", value: 20, color: "#f59e0b" },
   { name: "Seguros", value: 12, color: "#8b5cf6" },
   { name: "Otros", value: 8, color: "#64748b" },
+]
+
+// Datos de cuentas bancarias
+const cuentasBancarias = [
+  {
+    id: 'cuenta-1',
+    banco: 'BBVA',
+    tipoCuenta: 'Cuenta Corriente',
+    numeroCuenta: '****4521',
+    clabe: '012180001234567890',
+    saldo: 2850000,
+    moneda: 'MXN',
+    color: '#0d47a1',
+  },
+  {
+    id: 'cuenta-2',
+    banco: 'Banorte',
+    tipoCuenta: 'Cuenta de Inversión',
+    numeroCuenta: '****7832',
+    clabe: '072180009876543210',
+    saldo: 1250000,
+    moneda: 'MXN',
+    color: '#c62828',
+  },
+  {
+    id: 'cuenta-3',
+    banco: 'Santander',
+    tipoCuenta: 'Cuenta Empresarial',
+    numeroCuenta: '****2156',
+    clabe: '014180005555666677',
+    saldo: 890000,
+    moneda: 'MXN',
+    color: '#e53935',
+  },
+]
+
+// Movimientos bancarios
+const movimientosBancarios = [
+  {
+    id: 'mov-1',
+    fecha: '2024-01-15',
+    tipo: 'entrada',
+    concepto: 'Renta Pool Corporativo Monterrey - Enero',
+    monto: 120000,
+    cuentaId: 'cuenta-1',
+    referencia: 'REF-2024-001',
+    saldoResultante: 2850000,
+  },
+  {
+    id: 'mov-2',
+    fecha: '2024-01-14',
+    tipo: 'salida',
+    concepto: 'Pago mantenimiento edificio',
+    monto: 45000,
+    cuentaId: 'cuenta-1',
+    referencia: 'REF-2024-002',
+    saldoResultante: 2730000,
+  },
+  {
+    id: 'mov-3',
+    fecha: '2024-01-13',
+    tipo: 'entrada',
+    concepto: 'Renta Depto Roma Norte - Enero',
+    monto: 35000,
+    cuentaId: 'cuenta-2',
+    referencia: 'REF-2024-003',
+    saldoResultante: 1250000,
+  },
+  {
+    id: 'mov-4',
+    fecha: '2024-01-12',
+    tipo: 'salida',
+    concepto: 'Distribución a inversionista - Carlos Rodríguez',
+    monto: 85000,
+    cuentaId: 'cuenta-1',
+    referencia: 'DIST-2024-001',
+    saldoResultante: 2775000,
+  },
+  {
+    id: 'mov-5',
+    fecha: '2024-01-11',
+    tipo: 'entrada',
+    concepto: 'Renta Camión Refrigerado - Enero',
+    monto: 55000,
+    cuentaId: 'cuenta-3',
+    referencia: 'REF-2024-004',
+    saldoResultante: 890000,
+  },
+  {
+    id: 'mov-6',
+    fecha: '2024-01-10',
+    tipo: 'salida',
+    concepto: 'Pago de impuestos prediales',
+    monto: 28000,
+    cuentaId: 'cuenta-2',
+    referencia: 'REF-2024-005',
+    saldoResultante: 1215000,
+  },
+  {
+    id: 'mov-7',
+    fecha: '2024-01-09',
+    tipo: 'salida',
+    concepto: 'Distribución a inversionista - María González',
+    monto: 62000,
+    cuentaId: 'cuenta-1',
+    referencia: 'DIST-2024-002',
+    saldoResultante: 2860000,
+  },
+  {
+    id: 'mov-8',
+    fecha: '2024-01-08',
+    tipo: 'entrada',
+    concepto: 'Transferencia entre cuentas',
+    monto: 200000,
+    cuentaId: 'cuenta-3',
+    referencia: 'TRANSF-001',
+    saldoResultante: 835000,
+  },
 ]
 
 export default function FinanzasPage() {
@@ -332,6 +452,7 @@ export default function FinanzasPage() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Resumen</TabsTrigger>
+            <TabsTrigger value="bancos">Bancos</TabsTrigger>
             <TabsTrigger value="records">Registros</TabsTrigger>
             <TabsTrigger value="categories">Por Categoría</TabsTrigger>
           </TabsList>
@@ -438,6 +559,237 @@ export default function FinanzasPage() {
                       <Bar dataKey="egresos" name="Egresos" fill="#ef4444" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab de Bancos */}
+          <TabsContent value="bancos" className="space-y-6">
+            {/* Resumen de Saldos */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card className="md:col-span-1">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Saldo Total en Bancos</CardTitle>
+                  <Building2 className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">
+                    {formatCurrency(cuentasBancarias.reduce((sum, c) => sum + c.saldo, 0))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    En {cuentasBancarias.length} cuentas activas
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {cuentasBancarias.map((cuenta) => (
+                <Card key={cuenta.id}>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: cuenta.color }}
+                      />
+                      <CardTitle className="text-sm font-medium">{cuenta.banco}</CardTitle>
+                    </div>
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold">{formatCurrency(cuenta.saldo)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {cuenta.tipoCuenta} {cuenta.numeroCuenta}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Detalle de Cuentas y Movimientos */}
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Lista de Cuentas */}
+              <Card className="lg:col-span-1">
+                <CardHeader>
+                  <CardTitle className="text-base">Cuentas Bancarias</CardTitle>
+                  <CardDescription>Detalle de cada cuenta</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {cuentasBancarias.map((cuenta) => (
+                    <div 
+                      key={cuenta.id} 
+                      className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-2 h-8 rounded-full" 
+                            style={{ backgroundColor: cuenta.color }}
+                          />
+                          <div>
+                            <p className="font-semibold">{cuenta.banco}</p>
+                            <p className="text-xs text-muted-foreground">{cuenta.tipoCuenta}</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline">{cuenta.moneda}</Badge>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Cuenta:</span>
+                          <span className="font-mono">{cuenta.numeroCuenta}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">CLABE:</span>
+                          <span className="font-mono text-xs">{cuenta.clabe.slice(0, 6)}...{cuenta.clabe.slice(-4)}</span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t mt-2">
+                          <span className="font-medium">Saldo:</span>
+                          <span className="font-bold text-primary">{formatCurrency(cuenta.saldo)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Movimientos Recientes */}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">Movimientos Bancarios</CardTitle>
+                      <CardDescription>Entradas y salidas recientes</CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      <ArrowUpDown className="mr-2 h-4 w-4" />
+                      Filtrar
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead>Banco</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                        <TableHead className="text-right">Saldo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {movimientosBancarios.map((mov) => {
+                        const cuenta = cuentasBancarias.find(c => c.id === mov.cuentaId);
+                        return (
+                          <TableRow key={mov.id}>
+                            <TableCell className="text-sm">
+                              {formatDate(mov.fecha)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  mov.tipo === 'entrada' ? 'bg-emerald-500' : 'bg-red-500'
+                                }`} />
+                                <div>
+                                  <p className="text-sm font-medium">{mov.concepto}</p>
+                                  <p className="text-xs text-muted-foreground">{mov.referencia}</p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1.5">
+                                <div 
+                                  className="w-2 h-2 rounded-full" 
+                                  style={{ backgroundColor: cuenta?.color }}
+                                />
+                                <span className="text-sm">{cuenta?.banco}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className={`text-right font-medium ${
+                              mov.tipo === 'entrada' ? 'text-emerald-600' : 'text-red-600'
+                            }`}>
+                              {mov.tipo === 'entrada' ? '+' : '-'}{formatCurrency(mov.monto)}
+                            </TableCell>
+                            <TableCell className="text-right text-sm text-muted-foreground">
+                              {formatCurrency(mov.saldoResultante)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Gráfica de distribución por banco */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Distribución de Fondos por Banco</CardTitle>
+                <CardDescription>Porcentaje del saldo total en cada cuenta</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={cuentasBancarias.map(c => ({ 
+                            name: c.banco, 
+                            value: c.saldo, 
+                            color: c.color 
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={90}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {cuentasBancarias.map((cuenta, index) => (
+                            <Cell key={`cell-${index}`} fill={cuenta.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value: number) => formatCurrency(value)}
+                          contentStyle={{ 
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px"
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-col justify-center space-y-4">
+                    {cuentasBancarias.map((cuenta) => {
+                      const total = cuentasBancarias.reduce((sum, c) => sum + c.saldo, 0);
+                      const porcentaje = ((cuenta.saldo / total) * 100).toFixed(1);
+                      return (
+                        <div key={cuenta.id} className="flex items-center gap-3">
+                          <div 
+                            className="w-4 h-4 rounded-full flex-shrink-0" 
+                            style={{ backgroundColor: cuenta.color }}
+                          />
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-medium">{cuenta.banco}</span>
+                              <span className="text-sm text-muted-foreground">{porcentaje}%</span>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className="h-full rounded-full transition-all"
+                                style={{ 
+                                  width: `${porcentaje}%`,
+                                  backgroundColor: cuenta.color 
+                                }}
+                              />
+                            </div>
+                            <p className="text-sm text-right mt-1 font-medium">{formatCurrency(cuenta.saldo)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </CardContent>
             </Card>
