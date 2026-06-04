@@ -54,6 +54,7 @@ export default function EditarActivoPage({ params }: PageProps) {
   const [fechaCompra, setFechaCompra] = useState('');
   const [rentabilidadMensual, setRentabilidadMensual] = useState('');
   const [rentabilidadAnual, setRentabilidadAnual] = useState('');
+  const [porcentajeRentabilidad, setPorcentajeRentabilidad] = useState('');
   const [periodicidadDividendos, setPeriodicidadDividendos] = useState('');
   const [porcentajeApreciacion, setPorcentajeApreciacion] = useState('');
   
@@ -220,6 +221,19 @@ export default function EditarActivoPage({ params }: PageProps) {
       }
     }
   }, [activo]);
+
+  // Calcular rentabilidad automáticamente basada en porcentaje y valor total
+  useEffect(() => {
+    const valor = parseFloat(valorTotal) || 0;
+    const porcentaje = parseFloat(porcentajeRentabilidad) || 0;
+    
+    if (valor > 0 && porcentaje > 0) {
+      const rentAnual = (valor * porcentaje) / 100;
+      const rentMensual = rentAnual / 12;
+      setRentabilidadAnual(Math.round(rentAnual).toString());
+      setRentabilidadMensual(Math.round(rentMensual).toString());
+    }
+  }, [valorTotal, porcentajeRentabilidad]);
 
   // Funciones para manejar certificados
   const addCertificado = () => {
@@ -1152,57 +1166,87 @@ export default function EditarActivoPage({ params }: PageProps) {
             <Card>
               <CardHeader>
                 <CardTitle>Rentabilidad y Proyecciones</CardTitle>
-                <CardDescription>Expectativas de rendimiento del activo</CardDescription>
+                <CardDescription>Ingresa el porcentaje de rentabilidad esperada para calcular automaticamente los montos</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="rentabilidadMensual">Rentabilidad Mensual Esperada</Label>
-                  <Input
-                    id="rentabilidadMensual"
-                    type="number"
-                    value={rentabilidadMensual}
-                    onChange={(e) => setRentabilidadMensual(e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="100"
-                  />
+              <CardContent className="space-y-6">
+                {/* Inputs de porcentajes */}
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="porcentajeRentabilidad">% Rentabilidad Anual *</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="porcentajeRentabilidad"
+                        type="number"
+                        value={porcentajeRentabilidad}
+                        onChange={(e) => setPorcentajeRentabilidad(e.target.value)}
+                        placeholder="8"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="flex-1"
+                      />
+                      <span className="text-muted-foreground font-medium">%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Porcentaje de retorno anual sobre la inversion</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="porcentajeApreciacion">% Apreciacion Anual</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="porcentajeApreciacion"
+                        type="number"
+                        value={porcentajeApreciacion}
+                        onChange={(e) => setPorcentajeApreciacion(e.target.value)}
+                        placeholder="5"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="flex-1"
+                      />
+                      <span className="text-muted-foreground font-medium">%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Incremento anual esperado del valor del activo</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="periodicidadDividendos">Periodicidad de Dividendos</Label>
+                    <Select value={periodicidadDividendos} onValueChange={setPeriodicidadDividendos}>
+                      <SelectTrigger id="periodicidadDividendos">
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mensual">Mensual</SelectItem>
+                        <SelectItem value="trimestral">Trimestral</SelectItem>
+                        <SelectItem value="semestral">Semestral</SelectItem>
+                        <SelectItem value="anual">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Frecuencia de pago de dividendos</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rentabilidadAnual">Rentabilidad Anual Esperada</Label>
-                  <Input
-                    id="rentabilidadAnual"
-                    type="number"
-                    value={rentabilidadAnual}
-                    onChange={(e) => setRentabilidadAnual(e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="1000"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="periodicidadDividendos">Periodicidad de Dividendos</Label>
-                  <Select value={periodicidadDividendos} onValueChange={setPeriodicidadDividendos}>
-                    <SelectTrigger id="periodicidadDividendos">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mensual">Mensual</SelectItem>
-                      <SelectItem value="trimestral">Trimestral</SelectItem>
-                      <SelectItem value="semestral">Semestral</SelectItem>
-                      <SelectItem value="anual">Anual</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="porcentajeApreciacion">Apreciacion Esperada (%)</Label>
-                  <Input
-                    id="porcentajeApreciacion"
-                    type="number"
-                    value={porcentajeApreciacion}
-                    onChange={(e) => setPorcentajeApreciacion(e.target.value)}
-                    placeholder="5"
-                    step="0.5"
-                  />
+
+                {/* Rentabilidad calculada */}
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <p className="text-sm font-medium mb-4 text-muted-foreground">Rentabilidad Calculada (basada en Valor Total: ${parseFloat(valorTotal || '0').toLocaleString('es-MX')})</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="rentabilidadMensual">Rentabilidad Mensual Esperada</Label>
+                      <div className="p-3 rounded-md bg-background border">
+                        <p className="text-xl font-bold text-emerald-600">
+                          ${parseFloat(rentabilidadMensual || '0').toLocaleString('es-MX')}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Calculado: (Valor Total x % Rentabilidad) / 12</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rentabilidadAnual">Rentabilidad Anual Esperada</Label>
+                      <div className="p-3 rounded-md bg-background border">
+                        <p className="text-xl font-bold text-emerald-600">
+                          ${parseFloat(rentabilidadAnual || '0').toLocaleString('es-MX')}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Calculado: Valor Total x % Rentabilidad</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
