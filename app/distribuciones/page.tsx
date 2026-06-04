@@ -53,6 +53,19 @@ import {
 import { cn } from '@/lib/utils';
 import { distribuciones as distribucionesData, inversionistas, activos } from '@/lib/mock-data';
 import type { Distribucion, EstatusDistribucion } from '@/lib/types';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('es-MX', {
@@ -270,6 +283,70 @@ export default function DistribucionesPage() {
     return { totalCalculado, totalPagado, pendiente, pagados, pendientes };
   }, [localDistribuciones]);
 
+  // Datos para gráfica por inversionista
+  const chartDataPorInversionista = useMemo(() => {
+    const porInversionista: Record<string, { pagado: number; pendiente: number }> = {};
+    
+    localDistribuciones.forEach((d) => {
+      if (!porInversionista[d.inversionistaNombre]) {
+        porInversionista[d.inversionistaNombre] = { pagado: 0, pendiente: 0 };
+      }
+      porInversionista[d.inversionistaNombre].pagado += d.montoPagado;
+      porInversionista[d.inversionistaNombre].pendiente += d.montoCalculado - d.montoPagado;
+    });
+    
+    return Object.entries(porInversionista).map(([nombre, data]) => ({
+      nombre: nombre.split(' ')[0], // Solo primer nombre para que quepa
+      pagado: data.pagado,
+      pendiente: data.pendiente,
+    }));
+  }, [localDistribuciones]);
+
+  // Datos para gráfica de estatus (pie chart)
+  const chartDataEstatus = useMemo(() => {
+    const estatusCounts: Record<string, number> = {};
+    
+    localDistribuciones.forEach((d) => {
+      const label = estatusLabels[d.estatus] || d.estatus;
+      estatusCounts[label] = (estatusCounts[label] || 0) + d.montoCalculado;
+    });
+    
+    const colors: Record<string, string> = {
+      'Pagado': '#10b981',
+      'Pendiente': '#f59e0b',
+      'Parcial': '#3b82f6',
+      'Programado': '#8b5cf6',
+      'Cancelado': '#ef4444',
+    };
+    
+    return Object.entries(estatusCounts).map(([name, value]) => ({
+      name,
+      value,
+      color: colors[name] || '#64748b',
+    }));
+  }, [localDistribuciones]);
+
+  // Datos para gráfica por periodo
+  const chartDataPorPeriodo = useMemo(() => {
+    const porPeriodo: Record<string, { pagado: number; calculado: number }> = {};
+    
+    localDistribuciones.forEach((d) => {
+      if (!porPeriodo[d.periodo]) {
+        porPeriodo[d.periodo] = { pagado: 0, calculado: 0 };
+      }
+      porPeriodo[d.periodo].pagado += d.montoPagado;
+      porPeriodo[d.periodo].calculado += d.montoCalculado;
+    });
+    
+    return Object.entries(porPeriodo)
+      .map(([periodo, data]) => ({
+        periodo,
+        pagado: data.pagado,
+        calculado: data.calculado,
+      }))
+      .sort((a, b) => a.periodo.localeCompare(b.periodo));
+  }, [localDistribuciones]);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -331,6 +408,120 @@ export default function DistribucionesPage() {
             <CardContent>
               <div className="text-2xl font-bold">{inversionistas.filter((i) => i.estatus === 'activo').length}</div>
               <p className="text-xs text-muted-foreground">Inversionistas activos</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Graficas de Distribuciones */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Grafica por Inversionista */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">Distribuciones por Inversionista</CardTitle>
+              <CardDescription>Montos pagados vs pendientes por cada inversionista</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartDataPorInversionista} layout="vertical" margin={{ left: 20, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      type="number" 
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      className="text-xs"
+                    />
+                    <YAxis 
+                      type="category" 
+                      dataKey="nombre" 
+                      width={80}
+                      className="text-xs"
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="pagado" name="Pagado" fill="#10b981" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="pendiente" name="Pendiente" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Grafica de Estatus (Pie) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Estado de Distribuciones</CardTitle>
+              <CardDescription>Distribucion por estatus de pago</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartDataEstatus}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {chartDataEstatus.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Grafica por Periodo */}
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-base">Distribuciones por Periodo</CardTitle>
+              <CardDescription>Comparativa de montos calculados vs pagados por periodo</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartDataPorPeriodo} margin={{ left: 20, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="periodo" className="text-xs" />
+                    <YAxis 
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      className="text-xs"
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="calculado" name="Calculado" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="pagado" name="Pagado" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </div>
