@@ -303,29 +303,24 @@ export default function DistribucionesPage() {
     }));
   }, [distribuciones]);
 
-  // Datos para gráfica de estatus (pie chart)
+  // Datos para gráfica de estatus (pie chart) - Pagado vs Saldo en Bancos
+  const saldoBancos = 4990000; // Saldo total en bancos (BBVA + Banorte + Santander)
+  const totalPagadoInversionistas = distribuciones.reduce((sum, d) => sum + d.montoPagado, 0);
+  
   const chartDataEstatus = useMemo(() => {
-    const estatusCounts: Record<string, number> = {};
-    
-    distribuciones.forEach((d) => {
-      const label = estatusLabels[d.estatus] || d.estatus;
-      estatusCounts[label] = (estatusCounts[label] || 0) + d.montoCalculado;
-    });
-    
-    const colors: Record<string, string> = {
-      'Pagado': '#10b981',
-      'Pendiente': '#f59e0b',
-      'Parcial': '#3b82f6',
-      'Programado': '#8b5cf6',
-      'Cancelado': '#ef4444',
-    };
-    
-    return Object.entries(estatusCounts).map(([name, value]) => ({
-      name,
-      value,
-      color: colors[name] || '#64748b',
-    }));
-  }, [distribuciones]);
+    return [
+      {
+        name: 'Pagado a Inversionistas',
+        value: totalPagadoInversionistas,
+        color: '#10b981',
+      },
+      {
+        name: 'Saldo en Bancos',
+        value: saldoBancos,
+        color: '#3b82f6',
+      },
+    ];
+  }, [totalPagadoInversionistas]);
 
   // Datos para gráfica por periodo
   const chartDataPorPeriodo = useMemo(() => {
@@ -469,11 +464,11 @@ export default function DistribucionesPage() {
             </CardContent>
           </Card>
 
-          {/* Grafica de Estatus (Pie) */}
+          {/* Grafica de Pagado vs Saldo en Bancos (Pie) */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Estado de Distribuciones</CardTitle>
-              <CardDescription>Distribucion por estatus de pago</CardDescription>
+              <CardTitle className="text-base">Pagado vs Saldo en Bancos</CardTitle>
+              <CardDescription>Comparativa de distribuciones pagadas y saldo disponible</CardDescription>
             </CardHeader>
             <CardContent>
               {chartDataEstatus.length === 0 ? (
