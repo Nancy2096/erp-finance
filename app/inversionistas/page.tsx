@@ -56,7 +56,8 @@ import {
   Phone,
   Trash2,
 } from 'lucide-react';
-import { inversionistas, activos } from '@/lib/mock-data';
+import { inversionistas as mockInversionistas, activos } from '@/lib/mock-data';
+import { useInversionistas } from '@/lib/inversionistas-context';
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -66,13 +67,13 @@ import {
 import { cn } from '@/lib/utils';
 
 export default function InversionistasPage() {
+  const { inversionistas, updateInversionista, deleteInversionista, isLoaded } = useInversionistas();
   const [searchTerm, setSearchTerm] = useState('');
   const [estatusFilter, setEstatusFilter] = useState<string>('all');
-  const [localInversionistas, setLocalInversionistas] = useState(inversionistas);
   
   // Estados para editar inversionista
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedInversionista, setSelectedInversionista] = useState<typeof inversionistas[0] | null>(null);
+  const [selectedInversionista, setSelectedInversionista] = useState<typeof mockInversionistas[0] | null>(null);
   const [editNombre, setEditNombre] = useState('');
   const [editCorreo, setEditCorreo] = useState('');
   const [editTelefono, setEditTelefono] = useState('');
@@ -86,7 +87,7 @@ export default function InversionistasPage() {
   const [editNotas, setEditNotas] = useState('');
 
   const filteredInversionistas = useMemo(() => {
-    return localInversionistas.filter((inv) => {
+    return inversionistas.filter((inv) => {
       const matchesSearch =
         inv.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         inv.correo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -94,23 +95,23 @@ export default function InversionistasPage() {
       const matchesEstatus = estatusFilter === 'all' || inv.estatus === estatusFilter;
       return matchesSearch && matchesEstatus;
     });
-  }, [searchTerm, estatusFilter, localInversionistas]);
+  }, [searchTerm, estatusFilter, inversionistas]);
 
   const stats = useMemo(() => {
-    const totalInversionistas = localInversionistas.length;
-    const totalInvertido = localInversionistas.reduce((sum, i) => sum + i.montoInvertido, 0);
-    const totalDividendosRecibidos = localInversionistas.reduce((sum, i) => sum + i.dividendosRecibidos, 0);
-    const totalDividendosPendientes = localInversionistas.reduce((sum, i) => sum + i.dividendosPendientes, 0);
+    const totalInversionistas = inversionistas.length;
+    const totalInvertido = inversionistas.reduce((sum, i) => sum + i.montoInvertido, 0);
+    const totalDividendosRecibidos = inversionistas.reduce((sum, i) => sum + i.dividendosRecibidos, 0);
+    const totalDividendosPendientes = inversionistas.reduce((sum, i) => sum + i.dividendosPendientes, 0);
     return { totalInversionistas, totalInvertido, totalDividendosRecibidos, totalDividendosPendientes };
-  }, [localInversionistas]);
+  }, [inversionistas]);
 
-  const handleEliminar = (inv: typeof inversionistas[0]) => {
-    if (confirm(`¿Estás seguro de eliminar al inversionista "${inv.nombre}"? Esta acción no se puede deshacer.`)) {
-      setLocalInversionistas(localInversionistas.filter((i) => i.id !== inv.id));
+  const handleEliminar = (inv: typeof mockInversionistas[0]) => {
+    if (confirm(`¿Estás seguro de eliminar al inversionista "${inv.nombre}"? Esta acción eliminará también todas sus distribuciones asociadas.`)) {
+      deleteInversionista(inv.id);
     }
   };
 
-  const handleEditClick = (inv: typeof inversionistas[0]) => {
+  const handleEditClick = (inv: typeof mockInversionistas[0]) => {
     setSelectedInversionista(inv);
     setEditNombre(inv.nombre);
     setEditCorreo(inv.correo);
@@ -129,35 +130,29 @@ export default function InversionistasPage() {
   const handleSaveEdit = () => {
     if (!selectedInversionista || !editNombre || !editCorreo) return;
 
-    setLocalInversionistas(
-      localInversionistas.map((inv) =>
-        inv.id === selectedInversionista.id
-          ? {
-              ...inv,
-              nombre: editNombre,
-              correo: editCorreo,
-              telefono: editTelefono,
-              rfc: editRfc,
-              direccion: editDireccion,
-              banco: editBanco,
-              clabe: editClabe,
-              cuentaBancaria: editCuentaBancaria,
-              porcentajeParticipacion: parseFloat(editPorcentaje) || 0,
-              estatus: editEstatus as 'activo' | 'inactivo',
-              notasInternas: editNotas,
-            }
-          : inv
-      )
-    );
+    updateInversionista(selectedInversionista.id, {
+      nombre: editNombre,
+      correo: editCorreo,
+      telefono: editTelefono,
+      rfc: editRfc,
+      direccion: editDireccion,
+      banco: editBanco,
+      clabe: editClabe,
+      cuentaBancaria: editCuentaBancaria,
+      porcentajeParticipacion: parseFloat(editPorcentaje) || 0,
+      estatus: editEstatus as 'activo' | 'inactivo',
+      notasInternas: editNotas,
+    });
+    
     setEditDialogOpen(false);
     setSelectedInversionista(null);
   };
 
-  const handleEnviarCorreo = (inv: typeof inversionistas[0]) => {
+  const handleEnviarCorreo = (inv: typeof mockInversionistas[0]) => {
     window.location.href = `mailto:${inv.correo}?subject=Comunicación - ${inv.nombre}`;
   };
 
-  const handleContactar = (inv: typeof inversionistas[0]) => {
+  const handleContactar = (inv: typeof mockInversionistas[0]) => {
     if (inv.telefono) {
       window.location.href = `tel:${inv.telefono}`;
     } else {
@@ -165,7 +160,7 @@ export default function InversionistasPage() {
     }
   };
 
-  const handleGenerarReporte = (inv: typeof inversionistas[0]) => {
+  const handleGenerarReporte = (inv: typeof mockInversionistas[0]) => {
     alert(`Generando reporte para ${inv.nombre}...`);
     // Aquí iría la lógica para generar el reporte PDF
   };

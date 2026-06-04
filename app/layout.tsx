@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { CompanyProvider } from '@/lib/company-context'
 import { UsersProvider } from '@/lib/users-context'
 import { ActivosProvider } from '@/lib/activos-context'
+import { InversionistasProvider } from '@/lib/inversionistas-context'
 import { AuthProvider } from '@/lib/auth-context'
 import { ErrorSuppressor } from '@/components/error-suppressor'
 import './globals.css'
@@ -69,9 +70,11 @@ export default function RootLayout({
           <CompanyProvider>
             <UsersProvider>
               <ActivosProvider>
-                <AuthProvider>
-                  {children}
-                </AuthProvider>
+                <InversionistasProvider>
+                  <AuthProvider>
+                    {children}
+                  </AuthProvider>
+                </InversionistasProvider>
               </ActivosProvider>
             </UsersProvider>
           </CompanyProvider>

@@ -51,7 +51,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { distribuciones as distribucionesData, inversionistas, activos } from '@/lib/mock-data';
+import { activos } from '@/lib/mock-data';
+import { useInversionistas } from '@/lib/inversionistas-context';
 import type { Distribucion, EstatusDistribucion } from '@/lib/types';
 import {
   BarChart,
@@ -119,6 +120,7 @@ const estatusLabels: Record<EstatusDistribucion, string> = {
 };
 
 export default function DistribucionesPage() {
+  const { inversionistas, distribuciones, addDistribucion, updateDistribucion, deleteDistribucion, isLoaded } = useInversionistas();
   const [searchTerm, setSearchTerm] = useState('');
   const [estatusFilter, setEstatusFilter] = useState<string>('all');
   const [inversionistaFilter, setInversionistaFilter] = useState<string>('all');
@@ -144,9 +146,6 @@ export default function DistribucionesPage() {
   const [editReferencia, setEditReferencia] = useState('');
   const [editComentarios, setEditComentarios] = useState('');
 
-  // Estado local para distribuciones
-  const [localDistribuciones, setLocalDistribuciones] = useState(distribucionesData);
-
   const resetNewForm = () => {
     setNewInversionistaId('');
     setNewActivoId('');
@@ -167,8 +166,7 @@ export default function DistribucionesPage() {
     const activoIdFinal = newActivoId === 'none' ? undefined : newActivoId;
     const act = activoIdFinal ? activos.find((a) => a.id === activoIdFinal) : undefined;
 
-    const nuevaDistribucion: Distribucion = {
-      id: `dist-${Date.now()}`,
+    const nuevaDistribucion: Omit<Distribucion, 'id'> = {
       inversionistaId: newInversionistaId,
       inversionistaNombre: inv?.nombre || '',
       activoId: activoIdFinal,
@@ -187,7 +185,7 @@ export default function DistribucionesPage() {
       fechaCreacion: new Date().toISOString().split('T')[0],
     };
 
-    setLocalDistribuciones([nuevaDistribucion, ...localDistribuciones]);
+    addDistribucion(nuevaDistribucion as Distribucion);
     resetNewForm();
     setDialogOpen(false);
   };
@@ -205,42 +203,28 @@ export default function DistribucionesPage() {
   const handleSaveEdit = () => {
     if (!selectedDistribucion) return;
 
-    setLocalDistribuciones(
-      localDistribuciones.map((d) =>
-        d.id === selectedDistribucion.id
-          ? {
-              ...d,
-              montoPagado: parseFloat(editMontoPagado) || 0,
-              fechaPago: editFechaPago || undefined,
-              estatus: editEstatus as EstatusDistribucion,
-              referencia: editReferencia || undefined,
-              comentarios: editComentarios || undefined,
-            }
-          : d
-      )
-    );
+    updateDistribucion(selectedDistribucion.id, {
+      montoPagado: parseFloat(editMontoPagado) || 0,
+      fechaPago: editFechaPago || undefined,
+      estatus: editEstatus as EstatusDistribucion,
+      referencia: editReferencia || undefined,
+      comentarios: editComentarios || undefined,
+    });
     setEditDialogOpen(false);
     setSelectedDistribucion(null);
   };
 
   const handleMarcarPagado = (dist: Distribucion) => {
-    setLocalDistribuciones(
-      localDistribuciones.map((d) =>
-        d.id === dist.id
-          ? {
-              ...d,
-              montoPagado: d.montoCalculado,
-              fechaPago: new Date().toISOString().split('T')[0],
-              estatus: 'pagado' as EstatusDistribucion,
-            }
-          : d
-      )
-    );
+    updateDistribucion(dist.id, {
+      montoPagado: dist.montoCalculado,
+      fechaPago: new Date().toISOString().split('T')[0],
+      estatus: 'pagado' as EstatusDistribucion,
+    });
   };
 
   const handleEliminar = (dist: Distribucion) => {
     if (confirm(`¿Estás seguro de eliminar la distribución de ${dist.inversionistaNombre} - ${dist.periodo}?`)) {
-      setLocalDistribuciones(localDistribuciones.filter((d) => d.id !== dist.id));
+      deleteDistribucion(dist.id);
     }
   };
 
@@ -255,7 +239,7 @@ export default function DistribucionesPage() {
   const hayFiltros = searchTerm || estatusFilter !== 'all' || inversionistaFilter !== 'all' || fechaInicio || fechaFin;
 
   const filteredDistribuciones = useMemo(() => {
-    return localDistribuciones.filter((dist) => {
+    return distribuciones.filter((dist) => {
       const matchesSearch =
         dist.inversionistaNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         dist.periodo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -272,22 +256,22 @@ export default function DistribucionesPage() {
 
       return matchesSearch && matchesEstatus && matchesInversionista && matchesFecha;
     });
-  }, [searchTerm, estatusFilter, inversionistaFilter, fechaInicio, fechaFin, localDistribuciones]);
+  }, [searchTerm, estatusFilter, inversionistaFilter, fechaInicio, fechaFin, distribuciones]);
 
   const stats = useMemo(() => {
-    const totalCalculado = localDistribuciones.reduce((sum, d) => sum + d.montoCalculado, 0);
-    const totalPagado = localDistribuciones.reduce((sum, d) => sum + d.montoPagado, 0);
+    const totalCalculado = distribuciones.reduce((sum, d) => sum + d.montoCalculado, 0);
+    const totalPagado = distribuciones.reduce((sum, d) => sum + d.montoPagado, 0);
     const pendiente = totalCalculado - totalPagado;
-    const pagados = localDistribuciones.filter((d) => d.estatus === 'pagado').length;
-    const pendientes = localDistribuciones.filter((d) => d.estatus === 'pendiente' || d.estatus === 'programado').length;
+    const pagados = distribuciones.filter((d) => d.estatus === 'pagado').length;
+    const pendientes = distribuciones.filter((d) => d.estatus === 'pendiente' || d.estatus === 'programado').length;
     return { totalCalculado, totalPagado, pendiente, pagados, pendientes };
-  }, [localDistribuciones]);
+  }, [distribuciones]);
 
   // Datos para gráfica por inversionista
   const chartDataPorInversionista = useMemo(() => {
     const porInversionista: Record<string, { nombre: string; pagado: number; pendiente: number; total: number }> = {};
     
-    localDistribuciones.forEach((d) => {
+    distribuciones.forEach((d) => {
       if (!porInversionista[d.inversionistaNombre]) {
         porInversionista[d.inversionistaNombre] = { nombre: d.inversionistaNombre, pagado: 0, pendiente: 0, total: 0 };
       }
@@ -297,13 +281,13 @@ export default function DistribucionesPage() {
     });
     
     return Object.values(porInversionista);
-  }, [localDistribuciones]);
+  }, [distribuciones]);
 
   // Datos para gráfica de porcentaje de distribución por inversionista (pie)
   const chartDataPorcentajeDistribucion = useMemo(() => {
     const porInversionista: Record<string, number> = {};
     
-    localDistribuciones.forEach((d) => {
+    distribuciones.forEach((d) => {
       porInversionista[d.inversionistaNombre] = (porInversionista[d.inversionistaNombre] || 0) + d.montoCalculado;
     });
     
@@ -317,13 +301,13 @@ export default function DistribucionesPage() {
       porcentaje: total > 0 ? ((monto / total) * 100).toFixed(1) : '0',
       color: colors[index % colors.length],
     }));
-  }, [localDistribuciones]);
+  }, [distribuciones]);
 
   // Datos para gráfica de estatus (pie chart)
   const chartDataEstatus = useMemo(() => {
     const estatusCounts: Record<string, number> = {};
     
-    localDistribuciones.forEach((d) => {
+    distribuciones.forEach((d) => {
       const label = estatusLabels[d.estatus] || d.estatus;
       estatusCounts[label] = (estatusCounts[label] || 0) + d.montoCalculado;
     });
@@ -341,13 +325,13 @@ export default function DistribucionesPage() {
       value,
       color: colors[name] || '#64748b',
     }));
-  }, [localDistribuciones]);
+  }, [distribuciones]);
 
   // Datos para gráfica por periodo
   const chartDataPorPeriodo = useMemo(() => {
     const porPeriodo: Record<string, { pagado: number; calculado: number }> = {};
     
-    localDistribuciones.forEach((d) => {
+    distribuciones.forEach((d) => {
       if (!porPeriodo[d.periodo]) {
         porPeriodo[d.periodo] = { pagado: 0, calculado: 0 };
       }
@@ -362,7 +346,7 @@ export default function DistribucionesPage() {
         calculado: data.calculado,
       }))
       .sort((a, b) => a.periodo.localeCompare(b.periodo));
-  }, [localDistribuciones]);
+  }, [distribuciones]);
 
   return (
     <DashboardLayout>
