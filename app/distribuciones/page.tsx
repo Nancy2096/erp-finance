@@ -285,20 +285,37 @@ export default function DistribucionesPage() {
 
   // Datos para gráfica por inversionista
   const chartDataPorInversionista = useMemo(() => {
-    const porInversionista: Record<string, { pagado: number; pendiente: number }> = {};
+    const porInversionista: Record<string, { nombre: string; pagado: number; pendiente: number; total: number }> = {};
     
     localDistribuciones.forEach((d) => {
       if (!porInversionista[d.inversionistaNombre]) {
-        porInversionista[d.inversionistaNombre] = { pagado: 0, pendiente: 0 };
+        porInversionista[d.inversionistaNombre] = { nombre: d.inversionistaNombre, pagado: 0, pendiente: 0, total: 0 };
       }
       porInversionista[d.inversionistaNombre].pagado += d.montoPagado;
       porInversionista[d.inversionistaNombre].pendiente += d.montoCalculado - d.montoPagado;
+      porInversionista[d.inversionistaNombre].total += d.montoCalculado;
     });
     
-    return Object.entries(porInversionista).map(([nombre, data]) => ({
-      nombre: nombre.split(' ')[0], // Solo primer nombre para que quepa
-      pagado: data.pagado,
-      pendiente: data.pendiente,
+    return Object.values(porInversionista);
+  }, [localDistribuciones]);
+
+  // Datos para gráfica de porcentaje de distribución por inversionista (pie)
+  const chartDataPorcentajeDistribucion = useMemo(() => {
+    const porInversionista: Record<string, number> = {};
+    
+    localDistribuciones.forEach((d) => {
+      porInversionista[d.inversionistaNombre] = (porInversionista[d.inversionistaNombre] || 0) + d.montoCalculado;
+    });
+    
+    const total = Object.values(porInversionista).reduce((sum, val) => sum + val, 0);
+    
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+    
+    return Object.entries(porInversionista).map(([nombre, monto], index) => ({
+      nombre,
+      monto,
+      porcentaje: total > 0 ? ((monto / total) * 100).toFixed(1) : '0',
+      color: colors[index % colors.length],
     }));
   }, [localDistribuciones]);
 
@@ -413,41 +430,49 @@ export default function DistribucionesPage() {
         </div>
 
         {/* Graficas de Distribuciones */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Grafica por Inversionista */}
-          <Card className="lg:col-span-2">
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Grafica de Porcentaje de Distribución por Inversionista (Pie) */}
+          <Card>
             <CardHeader>
-              <CardTitle className="text-base">Distribuciones por Inversionista</CardTitle>
-              <CardDescription>Montos pagados vs pendientes por cada inversionista</CardDescription>
+              <CardTitle className="text-base">Participacion en Distribuciones</CardTitle>
+              <CardDescription>Porcentaje de distribuciones por inversionista</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[280px]">
+              <div className="h-[300px] flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartDataPorInversionista} layout="vertical" margin={{ left: 20, right: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis 
-                      type="number" 
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                      className="text-xs"
-                    />
-                    <YAxis 
-                      type="category" 
-                      dataKey="nombre" 
-                      width={80}
-                      className="text-xs"
-                    />
+                  <PieChart>
+                    <Pie
+                      data={chartDataPorcentajeDistribucion}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={3}
+                      dataKey="monto"
+                      nameKey="nombre"
+                    >
+                      {chartDataPorcentajeDistribucion.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
                     <Tooltip 
-                      formatter={(value: number) => formatCurrency(value)}
+                      formatter={(value: number, name: string) => [formatCurrency(value), name]}
                       contentStyle={{ 
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
                       }}
                     />
-                    <Legend />
-                    <Bar dataKey="pagado" name="Pagado" fill="#10b981" radius={[0, 4, 4, 0]} />
-                    <Bar dataKey="pendiente" name="Pendiente" fill="#f59e0b" radius={[0, 4, 4, 0]} />
-                  </BarChart>
+                    <Legend 
+                      layout="vertical" 
+                      align="right" 
+                      verticalAlign="middle"
+                      formatter={(value, entry) => {
+                        const item = chartDataPorcentajeDistribucion.find(d => d.nombre === value);
+                        return `${value} (${item?.porcentaje}%)`;
+                      }}
+                    />
+                  </PieChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
@@ -460,19 +485,17 @@ export default function DistribucionesPage() {
               <CardDescription>Distribucion por estatus de pago</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[280px]">
+              <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={chartDataEstatus}
                       cx="50%"
                       cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={2}
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={3}
                       dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
                     >
                       {chartDataEstatus.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -486,14 +509,59 @@ export default function DistribucionesPage() {
                         borderRadius: '8px',
                       }}
                     />
+                    <Legend 
+                      layout="vertical" 
+                      align="right" 
+                      verticalAlign="middle"
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
 
+          {/* Grafica por Inversionista - Tabla visual mejorada */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">Distribuciones por Inversionista</CardTitle>
+              <CardDescription>Desglose de montos pagados y pendientes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {chartDataPorInversionista.map((inv, index) => {
+                  const porcentajePagado = inv.total > 0 ? (inv.pagado / inv.total) * 100 : 0;
+                  return (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{inv.nombre}</span>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="text-emerald-600">Pagado: {formatCurrency(inv.pagado)}</span>
+                          <span className="text-amber-600">Pendiente: {formatCurrency(inv.pendiente)}</span>
+                          <span className="text-muted-foreground">Total: {formatCurrency(inv.total)}</span>
+                        </div>
+                      </div>
+                      <div className="relative h-4 w-full rounded-full bg-muted overflow-hidden">
+                        <div 
+                          className="absolute inset-y-0 left-0 bg-emerald-500 rounded-l-full transition-all"
+                          style={{ width: `${porcentajePagado}%` }}
+                        />
+                        <div 
+                          className="absolute inset-y-0 bg-amber-500 rounded-r-full transition-all"
+                          style={{ left: `${porcentajePagado}%`, width: `${100 - porcentajePagado}%` }}
+                        />
+                        <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white drop-shadow">
+                          {porcentajePagado.toFixed(0)}% pagado
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Grafica por Periodo */}
-          <Card className="lg:col-span-3">
+          <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle className="text-base">Distribuciones por Periodo</CardTitle>
               <CardDescription>Comparativa de montos calculados vs pagados por periodo</CardDescription>
