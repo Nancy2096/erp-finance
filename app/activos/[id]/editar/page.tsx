@@ -106,6 +106,12 @@ export default function EditarActivoPage({ params }: PageProps) {
   const [certificadoLibertadGravamenUrl, setCertificadoLibertadGravamenUrl] = useState('');
   const [boletaPredialUrl, setBoletaPredialUrl] = useState('');
   const [recibosServiciosUrl, setRecibosServiciosUrl] = useState('');
+  // Documentos Empresa
+  const [constanciaSituacionFiscalUrl, setConstanciaSituacionFiscalUrl] = useState('');
+  // Documentos Representantes Legales
+  const [identificacionOficialUrl, setIdentificacionOficialUrl] = useState('');
+  const [curpUrl, setCurpUrl] = useState('');
+  const [comprobanteDomicilioRepUrl, setComprobanteDomicilioRepUrl] = useState('');
   // Documentos para Fideicomiso/Empresa
   const [contratoFideicomisoUrl, setContratoFideicomisoUrl] = useState('');
   const [reglamentoFideicomisoUrl, setReglamentoFideicomisoUrl] = useState('');
@@ -1569,9 +1575,10 @@ export default function EditarActivoPage({ params }: PageProps) {
                 <CardTitle>Documentos para Firma de Contrato</CardTitle>
                 <CardDescription>Documentacion requerida para formalizar la compra del activo</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-6 sm:grid-cols-2">
+              <CardContent className="space-y-6">
+                {/* Contrato Principal */}
                 <div className="space-y-2">
-                  <Label htmlFor="contratoCompraventa">Contrato de Compraventa</Label>
+                  <Label htmlFor="contratoCompraventa">Contrato de Compraventa *</Label>
                   <Input
                     id="contratoCompraventa"
                     value={contratoCompraventaUrl}
@@ -1579,50 +1586,86 @@ export default function EditarActivoPage({ params }: PageProps) {
                     placeholder="URL o link de Google Drive"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="escrituras">Escrituras del Inmueble</Label>
-                  <Input
-                    id="escrituras"
-                    value={escriturasUrl}
-                    onChange={(e) => setEscriturasUrl(e.target.value)}
-                    placeholder="URL o link de Google Drive"
-                  />
+
+                {/* Datos de la Empresa */}
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h4 className="font-semibold text-base">Datos de la Empresa</h4>
+                  </div>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="actaConstitutiva">Acta Constitutiva *</Label>
+                      <Input
+                        id="actaConstitutiva"
+                        value={actaConstitutivaUrl}
+                        onChange={(e) => setActaConstitutivaUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="constanciaSituacionFiscal">Constancia de Situacion Fiscal *</Label>
+                      <Input
+                        id="constanciaSituacionFiscal"
+                        value={constanciaSituacionFiscalUrl}
+                        onChange={(e) => setConstanciaSituacionFiscalUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comprobanteDomicilioFiscal">Comprobante de Domicilio Fiscal *</Label>
+                      <Input
+                        id="comprobanteDomicilioFiscal"
+                        value={comprobanteDomicilioUrl}
+                        onChange={(e) => setComprobanteDomicilioUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="avaluo">Avaluo Comercial</Label>
-                  <Input
-                    id="avaluo"
-                    value={avaluoUrl}
-                    onChange={(e) => setAvaluoUrl(e.target.value)}
-                    placeholder="URL o link de Google Drive"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="certificadoLibertad">Certificado de Libertad de Gravamen</Label>
-                  <Input
-                    id="certificadoLibertad"
-                    value={certificadoLibertadGravamenUrl}
-                    onChange={(e) => setCertificadoLibertadGravamenUrl(e.target.value)}
-                    placeholder="URL o link de Google Drive"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="boletaPredial">Boleta Predial</Label>
-                  <Input
-                    id="boletaPredial"
-                    value={boletaPredialUrl}
-                    onChange={(e) => setBoletaPredialUrl(e.target.value)}
-                    placeholder="URL o link de Google Drive"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="recibosServicios">Recibos de Servicios (Agua, Luz, Gas)</Label>
-                  <Input
-                    id="recibosServicios"
-                    value={recibosServiciosUrl}
-                    onChange={(e) => setRecibosServiciosUrl(e.target.value)}
-                    placeholder="URL o link de Google Drive"
-                  />
+
+                {/* De los Representantes Legales */}
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h4 className="font-semibold text-base">De los Representantes Legales</h4>
+                  </div>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="poderNotarial">Poder Notarial *</Label>
+                      <Input
+                        id="poderNotarial"
+                        value={poderNotarialUrl}
+                        onChange={(e) => setPoderNotarialUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="identificacionOficial">Identificacion Oficial *</Label>
+                      <Input
+                        id="identificacionOficial"
+                        value={identificacionOficialUrl}
+                        onChange={(e) => setIdentificacionOficialUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="curp">CURP *</Label>
+                      <Input
+                        id="curp"
+                        value={curpUrl}
+                        onChange={(e) => setCurpUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comprobanteDomicilioRep">Comprobante de Domicilio *</Label>
+                      <Input
+                        id="comprobanteDomicilioRep"
+                        value={comprobanteDomicilioRepUrl}
+                        onChange={(e) => setComprobanteDomicilioRepUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
