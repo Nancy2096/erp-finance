@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   ArrowLeft,
   Edit,
@@ -51,8 +54,9 @@ import {
   Landmark,
   FolderOpen,
 } from 'lucide-react';
-import { pagos, dividendos, movimientos } from '@/lib/mock-data';
+import { pagos, movimientos } from '@/lib/mock-data';
 import { useActivos } from '@/lib/activos-context';
+import { useDividendos } from '@/lib/dividendos-context';
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -86,15 +90,68 @@ interface PageProps {
 export default function DetalleActivoPage({ params }: PageProps) {
   const { id } = use(params);
   const { getActivoById, activos } = useActivos();
+  const { getDividendosByActivo, getTotalDividendosRecibidosByActivo } = useDividendos();
   const activo = getActivoById(id) || activos[0];
   const pagosActivo = pagos.filter((p) => p.activoId === activo?.id);
-  const dividendosActivo = dividendos.filter((d) => d.activoId === activo.id);
+  const dividendosActivo = getDividendosByActivo(activo.id);
+  const totalDividendosRecibidos = getTotalDividendosRecibidosByActivo(activo.id);
   const movimientosActivo = movimientos.filter((m) => m.activoId === activo.id);
 
   const pieData = [
     { name: 'Pagado', value: activo.montoPagado, fill: '#10b981' },
     { name: 'Pendiente', value: activo.montoPendiente, fill: '#ef4444' },
   ];
+
+  // Estados para calculadora de rentabilidad
+  const [porcentajeRentabilidad, setPorcentajeRentabilidad] = useState<number>(activo.porcentajeApreciacion || 8);
+  const [porcentajeApreciacion, setPorcentajeApreciacion] = useState<number>(activo.porcentajeApreciacion || 5);
+  const [plazoProyeccion, setPlazoProyeccion] = useState<number>(10);
+
+  // Cálculos automáticos basados en el porcentaje
+  const calculosRentabilidad = useMemo(() => {
+    const montoInversion = activo.valorTotal;
+    const rentabilidadAnual = (montoInversion * porcentajeRentabilidad) / 100;
+    const rentabilidadMensual = rentabilidadAnual / 12;
+    
+    // Proyecciones a diferentes plazos con apreciación compuesta
+    const calcularProyeccion = (anos: number) => {
+      const valorFuturo = montoInversion * Math.pow(1 + porcentajeApreciacion / 100, anos);
+      const rentasTotales = rentabilidadAnual * anos;
+      const gananciaCapital = valorFuturo - montoInversion;
+      const retornoTotal = rentasTotales + gananciaCapital;
+      const roiTotal = (retornoTotal / montoInversion) * 100;
+      return {
+        anos,
+        valorFuturo,
+        rentasTotales,
+        gananciaCapital,
+        retornoTotal,
+        roiTotal,
+      };
+    };
+
+    return {
+      rentabilidadMensual,
+      rentabilidadAnual,
+      proyecciones: [5, 10, 15, 20].map(calcularProyeccion),
+    };
+  }, [activo.valorTotal, porcentajeRentabilidad, porcentajeApreciacion]);
+
+  // Datos para la gráfica de proyección
+  const datosProyeccion = useMemo(() => {
+    const datos = [];
+    for (let ano = 0; ano <= plazoProyeccion; ano++) {
+      const valorActivo = activo.valorTotal * Math.pow(1 + porcentajeApreciacion / 100, ano);
+      const rentasAcumuladas = calculosRentabilidad.rentabilidadAnual * ano;
+      datos.push({
+        ano: `Año ${ano}`,
+        valorActivo,
+        rentasAcumuladas,
+        total: valorActivo + rentasAcumuladas - activo.valorTotal,
+      });
+    }
+    return datos;
+  }, [activo.valorTotal, porcentajeApreciacion, plazoProyeccion, calculosRentabilidad.rentabilidadAnual]);
 
   const timelineEvents = [
     { fecha: activo.fechaCompra, evento: 'Registro de compra', tipo: 'compra' },
@@ -317,46 +374,189 @@ export default function DetalleActivoPage({ params }: PageProps) {
               </Card>
             </div>
 
-            {/* Métricas de Rendimiento */}
+            {/* Calculadora de Rentabilidad y Proyección */}
             <Card>
               <CardHeader>
-                <CardTitle>Métricas de Rendimiento</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5" />
+                  Rentabilidad y Proyección
+                </CardTitle>
+                <CardDescription>Calcula la rentabilidad basada en el porcentaje de retorno esperado</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Rentabilidad Mensual Esperada</p>
-                    <p className="text-xl font-bold">{formatCurrency(activo.rentabilidadMensualEsperada)}</p>
+              <CardContent className="space-y-6">
+                {/* Inputs de porcentajes */}
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="porcentaje-rentabilidad">% Rentabilidad Anual</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="porcentaje-rentabilidad"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={porcentajeRentabilidad}
+                        onChange={(e) => setPorcentajeRentabilidad(parseFloat(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                      <span className="text-muted-foreground">%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Porcentaje de retorno anual sobre la inversión</p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Rentabilidad Anual Esperada</p>
-                    <p className="text-xl font-bold">{formatCurrency(activo.rentabilidadAnualEsperada)}</p>
+                  <div className="space-y-2">
+                    <Label htmlFor="porcentaje-apreciacion">% Apreciación Anual</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="porcentaje-apreciacion"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={porcentajeApreciacion}
+                        onChange={(e) => setPorcentajeApreciacion(parseFloat(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                      <span className="text-muted-foreground">%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Incremento anual del valor del activo</p>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plazo-proyeccion">Plazo de Proyección</Label>
+                    <Select value={plazoProyeccion.toString()} onValueChange={(v) => setPlazoProyeccion(parseInt(v))}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5 años</SelectItem>
+                        <SelectItem value="10">10 años</SelectItem>
+                        <SelectItem value="15">15 años</SelectItem>
+                        <SelectItem value="20">20 años</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Horizonte de inversión</p>
+                  </div>
+                </div>
+
+                {/* Rentabilidad calculada */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 p-4 rounded-lg bg-muted/50">
+                  <div className="text-center p-3 rounded-lg bg-background">
+                    <p className="text-xs text-muted-foreground mb-1">Monto Total Inversión</p>
+                    <p className="text-xl font-bold text-primary">{formatCurrency(activo.valorTotal)}</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-background">
+                    <p className="text-xs text-muted-foreground mb-1">Rentabilidad Mensual</p>
+                    <p className="text-xl font-bold text-emerald-600">{formatCurrency(calculosRentabilidad.rentabilidadMensual)}</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-background">
+                    <p className="text-xs text-muted-foreground mb-1">Rentabilidad Anual</p>
+                    <p className="text-xl font-bold text-emerald-600">{formatCurrency(calculosRentabilidad.rentabilidadAnual)}</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-background">
+                    <p className="text-xs text-muted-foreground mb-1">ROI a {plazoProyeccion} años</p>
+                    <p className="text-xl font-bold text-blue-600">
+                      {formatPercentage(calculosRentabilidad.proyecciones.find(p => p.anos === plazoProyeccion)?.roiTotal || 0)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Gráfica de proyección */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold">Proyección a {plazoProyeccion} años</h4>
+                  <div className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={datosProyeccion}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="ano" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis 
+                          className="text-xs" 
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          tickFormatter={(value) => formatCurrencyCompact(value)}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '0.5rem',
+                          }}
+                          formatter={(value: number, name: string) => [
+                            formatCurrency(value),
+                            name === 'valorActivo' ? 'Valor del Activo' : 
+                            name === 'rentasAcumuladas' ? 'Rentas Acumuladas' : 'Ganancia Total'
+                          ]}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="valorActivo"
+                          stackId="1"
+                          stroke="#3b82f6"
+                          fill="#3b82f6"
+                          fillOpacity={0.3}
+                          name="Valor del Activo"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="rentasAcumuladas"
+                          stackId="2"
+                          stroke="#10b981"
+                          fill="#10b981"
+                          fillOpacity={0.3}
+                          name="Rentas Acumuladas"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Tabla de corrida financiera */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold">Corrida Financiera</h4>
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="font-semibold">Plazo</TableHead>
+                          <TableHead className="text-right font-semibold">Valor del Activo</TableHead>
+                          <TableHead className="text-right font-semibold">Rentas Totales</TableHead>
+                          <TableHead className="text-right font-semibold">Ganancia Capital</TableHead>
+                          <TableHead className="text-right font-semibold">Retorno Total</TableHead>
+                          <TableHead className="text-right font-semibold">ROI</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {calculosRentabilidad.proyecciones.map((p) => (
+                          <TableRow key={p.anos} className={p.anos === plazoProyeccion ? 'bg-primary/5' : ''}>
+                            <TableCell className="font-medium">{p.anos} años</TableCell>
+                            <TableCell className="text-right">{formatCurrency(p.valorFuturo)}</TableCell>
+                            <TableCell className="text-right text-emerald-600">{formatCurrency(p.rentasTotales)}</TableCell>
+                            <TableCell className="text-right text-blue-600">{formatCurrency(p.gananciaCapital)}</TableCell>
+                            <TableCell className="text-right font-semibold">{formatCurrency(p.retornoTotal)}</TableCell>
+                            <TableCell className="text-right font-bold text-primary">{formatPercentage(p.roiTotal)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                {/* Métricas adicionales */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-4 border-t">
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Dividendos Acumulados</p>
-                    <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(activo.dividendosAcumulados)}
+                    <p className="text-lg font-bold text-emerald-600">
+                      {formatCurrency(totalDividendosRecibidos || activo.dividendosAcumulados)}
                     </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Valor Actual Estimado</p>
-                    <p className="text-xl font-bold">{formatCurrency(activo.valorActualEstimado)}</p>
+                    <p className="text-lg font-bold">{formatCurrency(activo.valorActualEstimado)}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">ROI</p>
-                    <p className="text-xl font-bold">{activo.roi > 0 ? formatPercentage(activo.roi) : '-'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Payback</p>
-                    <p className="text-xl font-bold">{activo.payback > 0 ? formatMonths(activo.payback) : '-'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Apreciación Esperada</p>
-                    <p className="text-xl font-bold">{formatPercentage(activo.porcentajeApreciacion)} anual</p>
+                    <p className="text-sm text-muted-foreground">Payback Estimado</p>
+                    <p className="text-lg font-bold">{activo.payback > 0 ? formatMonths(activo.payback) : '-'}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Periodicidad</p>
-                    <p className="text-xl font-bold capitalize">{activo.periodicidadDividendos}</p>
+                    <p className="text-lg font-bold capitalize">{activo.periodicidadDividendos}</p>
                   </div>
                 </div>
               </CardContent>

@@ -54,6 +54,7 @@ export default function EditarActivoPage({ params }: PageProps) {
   const [fechaCompra, setFechaCompra] = useState('');
   const [rentabilidadMensual, setRentabilidadMensual] = useState('');
   const [rentabilidadAnual, setRentabilidadAnual] = useState('');
+  const [porcentajeRentabilidad, setPorcentajeRentabilidad] = useState('');
   const [periodicidadDividendos, setPeriodicidadDividendos] = useState('');
   const [porcentajeApreciacion, setPorcentajeApreciacion] = useState('');
   
@@ -98,6 +99,25 @@ export default function EditarActivoPage({ params }: PageProps) {
   const [poderNotarialUrl, setPoderNotarialUrl] = useState('');
   const [comprobanteDomicilioUrl, setComprobanteDomicilioUrl] = useState('');
   const [identificacionRepresentanteUrl, setIdentificacionRepresentanteUrl] = useState('');
+  // Documentos para Contrato
+  const [contratoCompraventaUrl, setContratoCompraventaUrl] = useState('');
+  const [escriturasUrl, setEscriturasUrl] = useState('');
+  const [avaluoUrl, setAvaluoUrl] = useState('');
+  const [certificadoLibertadGravamenUrl, setCertificadoLibertadGravamenUrl] = useState('');
+  const [boletaPredialUrl, setBoletaPredialUrl] = useState('');
+  const [recibosServiciosUrl, setRecibosServiciosUrl] = useState('');
+  // Documentos Empresa
+  const [constanciaSituacionFiscalUrl, setConstanciaSituacionFiscalUrl] = useState('');
+  // Documentos Representantes Legales
+  const [identificacionOficialUrl, setIdentificacionOficialUrl] = useState('');
+  const [curpUrl, setCurpUrl] = useState('');
+  const [comprobanteDomicilioRepUrl, setComprobanteDomicilioRepUrl] = useState('');
+  // Documentos para Fideicomiso/Empresa
+  const [contratoFideicomisoUrl, setContratoFideicomisoUrl] = useState('');
+  const [reglamentoFideicomisoUrl, setReglamentoFideicomisoUrl] = useState('');
+  const [cedulaFiscalUrl, setCedulaFiscalUrl] = useState('');
+  const [estadosFinancierosUrl, setEstadosFinancierosUrl] = useState('');
+  const [cartaPoderesUrl, setCartaPoderesUrl] = useState('');
   const [empresaNotas, setEmpresaNotas] = useState('');
   
   // Estados para plan de compra
@@ -220,6 +240,19 @@ export default function EditarActivoPage({ params }: PageProps) {
       }
     }
   }, [activo]);
+
+  // Calcular rentabilidad automáticamente basada en porcentaje y valor total
+  useEffect(() => {
+    const valor = parseFloat(valorTotal) || 0;
+    const porcentaje = parseFloat(porcentajeRentabilidad) || 0;
+    
+    if (valor > 0 && porcentaje > 0) {
+      const rentAnual = (valor * porcentaje) / 100;
+      const rentMensual = rentAnual / 12;
+      setRentabilidadAnual(Math.round(rentAnual).toString());
+      setRentabilidadMensual(Math.round(rentMensual).toString());
+    }
+  }, [valorTotal, porcentajeRentabilidad]);
 
   // Funciones para manejar certificados
   const addCertificado = () => {
@@ -929,51 +962,6 @@ export default function EditarActivoPage({ params }: PageProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle>Documentos Legales</CardTitle>
-                <CardDescription>Documentacion legal de la empresa (URLs de archivos)</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-6 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="actaConstitutiva">Acta Constitutiva (URL)</Label>
-                  <Input
-                    id="actaConstitutiva"
-                    value={actaConstitutivaUrl}
-                    onChange={(e) => setActaConstitutivaUrl(e.target.value)}
-                    placeholder="URL del documento PDF"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="poderNotarial">Poder Notarial (URL)</Label>
-                  <Input
-                    id="poderNotarial"
-                    value={poderNotarialUrl}
-                    onChange={(e) => setPoderNotarialUrl(e.target.value)}
-                    placeholder="URL del documento PDF"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="comprobanteDomicilio">Comprobante de Domicilio (URL)</Label>
-                  <Input
-                    id="comprobanteDomicilio"
-                    value={comprobanteDomicilioUrl}
-                    onChange={(e) => setComprobanteDomicilioUrl(e.target.value)}
-                    placeholder="URL del documento PDF"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="identificacionRepresentante">ID Representante Legal (URL)</Label>
-                  <Input
-                    id="identificacionRepresentante"
-                    value={identificacionRepresentanteUrl}
-                    onChange={(e) => setIdentificacionRepresentanteUrl(e.target.value)}
-                    placeholder="URL del documento PDF"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
                 <CardTitle>Notas Adicionales</CardTitle>
               </CardHeader>
               <CardContent>
@@ -1152,57 +1140,87 @@ export default function EditarActivoPage({ params }: PageProps) {
             <Card>
               <CardHeader>
                 <CardTitle>Rentabilidad y Proyecciones</CardTitle>
-                <CardDescription>Expectativas de rendimiento del activo</CardDescription>
+                <CardDescription>Ingresa el porcentaje de rentabilidad esperada para calcular automaticamente los montos</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="rentabilidadMensual">Rentabilidad Mensual Esperada</Label>
-                  <Input
-                    id="rentabilidadMensual"
-                    type="number"
-                    value={rentabilidadMensual}
-                    onChange={(e) => setRentabilidadMensual(e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="100"
-                  />
+              <CardContent className="space-y-6">
+                {/* Inputs de porcentajes */}
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="porcentajeRentabilidad">% Rentabilidad Anual *</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="porcentajeRentabilidad"
+                        type="number"
+                        value={porcentajeRentabilidad}
+                        onChange={(e) => setPorcentajeRentabilidad(e.target.value)}
+                        placeholder="8"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="flex-1"
+                      />
+                      <span className="text-muted-foreground font-medium">%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Porcentaje de retorno anual sobre la inversion</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="porcentajeApreciacion">% Apreciacion Anual</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="porcentajeApreciacion"
+                        type="number"
+                        value={porcentajeApreciacion}
+                        onChange={(e) => setPorcentajeApreciacion(e.target.value)}
+                        placeholder="5"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        className="flex-1"
+                      />
+                      <span className="text-muted-foreground font-medium">%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Incremento anual esperado del valor del activo</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="periodicidadDividendos">Periodicidad de Dividendos</Label>
+                    <Select value={periodicidadDividendos} onValueChange={setPeriodicidadDividendos}>
+                      <SelectTrigger id="periodicidadDividendos">
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mensual">Mensual</SelectItem>
+                        <SelectItem value="trimestral">Trimestral</SelectItem>
+                        <SelectItem value="semestral">Semestral</SelectItem>
+                        <SelectItem value="anual">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Frecuencia de pago de dividendos</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rentabilidadAnual">Rentabilidad Anual Esperada</Label>
-                  <Input
-                    id="rentabilidadAnual"
-                    type="number"
-                    value={rentabilidadAnual}
-                    onChange={(e) => setRentabilidadAnual(e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="1000"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="periodicidadDividendos">Periodicidad de Dividendos</Label>
-                  <Select value={periodicidadDividendos} onValueChange={setPeriodicidadDividendos}>
-                    <SelectTrigger id="periodicidadDividendos">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mensual">Mensual</SelectItem>
-                      <SelectItem value="trimestral">Trimestral</SelectItem>
-                      <SelectItem value="semestral">Semestral</SelectItem>
-                      <SelectItem value="anual">Anual</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="porcentajeApreciacion">Apreciacion Esperada (%)</Label>
-                  <Input
-                    id="porcentajeApreciacion"
-                    type="number"
-                    value={porcentajeApreciacion}
-                    onChange={(e) => setPorcentajeApreciacion(e.target.value)}
-                    placeholder="5"
-                    step="0.5"
-                  />
+
+                {/* Rentabilidad calculada */}
+                <div className="p-4 rounded-lg bg-muted/50 border">
+                  <p className="text-sm font-medium mb-4 text-muted-foreground">Rentabilidad Calculada (basada en Valor Total: ${parseFloat(valorTotal || '0').toLocaleString('es-MX')})</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="rentabilidadMensual">Rentabilidad Mensual Esperada</Label>
+                      <div className="p-3 rounded-md bg-background border">
+                        <p className="text-xl font-bold text-emerald-600">
+                          ${parseFloat(rentabilidadMensual || '0').toLocaleString('es-MX')}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Calculado: (Valor Total x % Rentabilidad) / 12</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rentabilidadAnual">Rentabilidad Anual Esperada</Label>
+                      <div className="p-3 rounded-md bg-background border">
+                        <p className="text-xl font-bold text-emerald-600">
+                          ${parseFloat(rentabilidadAnual || '0').toLocaleString('es-MX')}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Calculado: Valor Total x % Rentabilidad</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1551,11 +1569,204 @@ export default function EditarActivoPage({ params }: PageProps) {
 
           {/* Documentos Tab */}
           <TabsContent value="documentos" className="space-y-6">
+            {/* Documentos para Firma de Contrato */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Documentos para Firma de Contrato</CardTitle>
+                <CardDescription>Documentacion requerida para formalizar la compra del activo</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Contrato Principal */}
+                <div className="space-y-2">
+                  <Label htmlFor="contratoCompraventa">Contrato de Compraventa *</Label>
+                  <Input
+                    id="contratoCompraventa"
+                    value={contratoCompraventaUrl}
+                    onChange={(e) => setContratoCompraventaUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+
+                {/* Datos de la Empresa */}
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h4 className="font-semibold text-base">Datos de la Empresa</h4>
+                  </div>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="actaConstitutiva">Acta Constitutiva *</Label>
+                      <Input
+                        id="actaConstitutiva"
+                        value={actaConstitutivaUrl}
+                        onChange={(e) => setActaConstitutivaUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="constanciaSituacionFiscal">Constancia de Situacion Fiscal *</Label>
+                      <Input
+                        id="constanciaSituacionFiscal"
+                        value={constanciaSituacionFiscalUrl}
+                        onChange={(e) => setConstanciaSituacionFiscalUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comprobanteDomicilioFiscal">Comprobante de Domicilio Fiscal *</Label>
+                      <Input
+                        id="comprobanteDomicilioFiscal"
+                        value={comprobanteDomicilioUrl}
+                        onChange={(e) => setComprobanteDomicilioUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* De los Representantes Legales */}
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <h4 className="font-semibold text-base">De los Representantes Legales</h4>
+                  </div>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="poderNotarial">Poder Notarial *</Label>
+                      <Input
+                        id="poderNotarial"
+                        value={poderNotarialUrl}
+                        onChange={(e) => setPoderNotarialUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="identificacionOficial">Identificacion Oficial *</Label>
+                      <Input
+                        id="identificacionOficial"
+                        value={identificacionOficialUrl}
+                        onChange={(e) => setIdentificacionOficialUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="curp">CURP *</Label>
+                      <Input
+                        id="curp"
+                        value={curpUrl}
+                        onChange={(e) => setCurpUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comprobanteDomicilioRep">Comprobante de Domicilio *</Label>
+                      <Input
+                        id="comprobanteDomicilioRep"
+                        value={comprobanteDomicilioRepUrl}
+                        onChange={(e) => setComprobanteDomicilioRepUrl(e.target.value)}
+                        placeholder="URL o link de Google Drive"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Documentos para Fideicomiso/Empresa */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Documentos para Fideicomiso / Empresa</CardTitle>
+                <CardDescription>Documentacion requerida para formar parte de un fideicomiso o constituir una empresa</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-6 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="actaConstitutiva">Acta Constitutiva</Label>
+                  <Input
+                    id="actaConstitutiva"
+                    value={actaConstitutivaUrl}
+                    onChange={(e) => setActaConstitutivaUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="poderNotarial">Poder Notarial</Label>
+                  <Input
+                    id="poderNotarial"
+                    value={poderNotarialUrl}
+                    onChange={(e) => setPoderNotarialUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contratoFideicomiso">Contrato de Fideicomiso</Label>
+                  <Input
+                    id="contratoFideicomiso"
+                    value={contratoFideicomisoUrl}
+                    onChange={(e) => setContratoFideicomisoUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reglamentoFideicomiso">Reglamento del Fideicomiso</Label>
+                  <Input
+                    id="reglamentoFideicomiso"
+                    value={reglamentoFideicomisoUrl}
+                    onChange={(e) => setReglamentoFideicomisoUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cedulaFiscal">Cedula Fiscal (RFC)</Label>
+                  <Input
+                    id="cedulaFiscal"
+                    value={cedulaFiscalUrl}
+                    onChange={(e) => setCedulaFiscalUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="comprobanteDomicilio">Comprobante de Domicilio Fiscal</Label>
+                  <Input
+                    id="comprobanteDomicilio"
+                    value={comprobanteDomicilioUrl}
+                    onChange={(e) => setComprobanteDomicilioUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="identificacionRepresentante">Identificacion del Representante Legal</Label>
+                  <Input
+                    id="identificacionRepresentante"
+                    value={identificacionRepresentanteUrl}
+                    onChange={(e) => setIdentificacionRepresentanteUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cartaPoderes">Carta de Poderes</Label>
+                  <Input
+                    id="cartaPoderes"
+                    value={cartaPoderesUrl}
+                    onChange={(e) => setCartaPoderesUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="estadosFinancieros">Estados Financieros</Label>
+                  <Input
+                    id="estadosFinancieros"
+                    value={estadosFinancierosUrl}
+                    onChange={(e) => setEstadosFinancierosUrl(e.target.value)}
+                    placeholder="URL o link de Google Drive"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Otros Documentos */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Documentos del Activo</CardTitle>
-                  <CardDescription>Vincula documentos de Google Drive a este activo</CardDescription>
+                  <CardTitle>Otros Documentos</CardTitle>
+                  <CardDescription>Documentos adicionales vinculados a este activo</CardDescription>
                 </div>
                 <Button type="button" variant="outline" onClick={addDocumento}>
                   <Plus className="mr-2 h-4 w-4" />

@@ -16,7 +16,6 @@ import {
   Wallet,
   FileBarChart,
   LineChart,
-  FileText,
   Bell,
   UserCog,
   History,
@@ -84,7 +83,6 @@ const navigationItems = [
   {
     title: 'Sistema',
     items: [
-      { name: 'Documentos', href: '/documentos', icon: FileText },
       { name: 'Alertas', href: '/alertas', icon: Bell },
       { name: 'Usuarios', href: '/usuarios', icon: UserCog },
       { name: 'Bitácora', href: '/bitacora', icon: History },

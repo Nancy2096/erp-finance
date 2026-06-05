@@ -190,13 +190,7 @@ export default function LoginPage() {
               </Button>
             </form>
             
-            {/* Info de credenciales para demo */}
-            <div className="mt-6 p-3 rounded-lg bg-slate-700/30 border border-slate-600">
-              <p className="text-xs text-slate-400 text-center mb-2">Credenciales de acceso:</p>
-              <div className="text-xs text-slate-500 space-y-1">
-                <p><span className="text-slate-400">Admin:</span> enrique@agency4realestate.com</p>
-              </div>
-            </div>
+
           </CardContent>
         </Card>
 
